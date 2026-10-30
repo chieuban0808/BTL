@@ -8,3 +8,13 @@ C:\Users\PC\OneDrive\Documents\laptrinhtrucquan\BTL\QuanLyCuaHangSach\QuanLyCuaH
 C:\Users\PC\OneDrive\Documents\laptrinhtrucquan\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.exe
 C:\Users\PC\OneDrive\Documents\laptrinhtrucquan\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.pdb
 C:\Users\PC\OneDrive\Documents\laptrinhtrucquan\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.frmMain.resources
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\bin\Debug\QuanLyCuaHangSach.exe.config
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\bin\Debug\QuanLyCuaHangSach.exe
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\bin\Debug\QuanLyCuaHangSach.pdb
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.csproj.AssemblyReference.cache
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.frmMain.resources
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.Properties.Resources.resources
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.csproj.GenerateResource.cache
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.csproj.CoreCompileInputs.cache
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.exe
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.pdb

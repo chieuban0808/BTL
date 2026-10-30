@@ -143,75 +143,86 @@ CREATE TABLE MatSach (
 GO
 
 /* ======================= 3. TRIGGER (yêu cầu 1, 2, 3) ======================= */
+/* Các trigger xử lý cả INSERT, UPDATE, DELETE nhiều dòng. Khi một sách có
+   nhiều dòng nhập trong cùng lệnh, giá nhập mới lấy từ hóa đơn nhập có SoHDN lớn nhất. */
 
-/* ---- 3.1 Nhập hàng: cộng kho, cập nhật giá nhập, giá bán = 110% giá nhập ---- */
-CREATE TRIGGER trg_ChiTietHDN_Ins ON ChiTietHDN AFTER INSERT AS
+CREATE TRIGGER trg_ChiTietHDN_Stock ON ChiTietHDN AFTER INSERT, UPDATE, DELETE AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Sách chưa có trong kho thì tạo dòng mới
-    INSERT INTO KhoSach (MaSach, SoLuong, DonGiaNhap, DonGiaBan)
-    SELECT i.MaSach, 0, 0, 0
-    FROM inserted i
-    WHERE NOT EXISTS (SELECT 1 FROM KhoSach k WHERE k.MaSach = i.MaSach);
+    DECLARE @DeltaNhap TABLE (MaSach INT PRIMARY KEY, SoLuong INT NOT NULL);
+    INSERT INTO @DeltaNhap
+    SELECT MaSach, SUM(SoLuong)
+    FROM (
+        SELECT MaSach, SLNhap AS SoLuong FROM inserted
+        UNION ALL
+        SELECT MaSach, -SLNhap AS SoLuong FROM deleted
+    ) x GROUP BY MaSach;
 
-    UPDATE k
-    SET k.SoLuong   = k.SoLuong + i.SLNhap,
-        k.DonGiaNhap = i.DonGiaNhap,
-        k.DonGiaBan  = ROUND(i.DonGiaNhap * 1.1, 0)
-    FROM KhoSach k
-    JOIN inserted i ON i.MaSach = k.MaSach;
-
-    UPDATE h
-    SET h.TongTien = ISNULL((SELECT SUM(c.ThanhTien) FROM ChiTietHDN c WHERE c.SoHDN = h.SoHDN), 0)
-    FROM HoaDonNhap h
-    WHERE h.SoHDN IN (SELECT SoHDN FROM inserted);
-END
-GO
-
-/* ---- 3.2 Xoá chi tiết nhập: trừ lại kho (không cho kho âm) ---- */
-CREATE TRIGGER trg_ChiTietHDN_Del ON ChiTietHDN AFTER DELETE AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (SELECT 1 FROM deleted d JOIN KhoSach k ON k.MaSach = d.MaSach
-               WHERE k.SoLuong < d.SLNhap)
+    IF EXISTS (
+        SELECT 1 FROM @DeltaNhap d
+        LEFT JOIN KhoSach k ON k.MaSach = d.MaSach
+        WHERE k.MaSach IS NULL AND d.SoLuong < 0
+           OR k.MaSach IS NOT NULL AND k.SoLuong + d.SoLuong < 0
+    )
     BEGIN
-        RAISERROR(N'Không thể xoá: số lượng trong kho ít hơn số lượng đã nhập (sách đã bán/mất).', 16, 1);
+        RAISERROR(N'Không thể xóa hoặc sửa chi tiết nhập: số lượng tồn kho không đủ.', 16, 1);
         ROLLBACK TRANSACTION;
         RETURN;
-    END
+    END;
 
-    UPDATE k SET k.SoLuong = k.SoLuong - d.SLNhap
-    FROM KhoSach k JOIN deleted d ON d.MaSach = k.MaSach;
+    INSERT INTO KhoSach (MaSach, SoLuong, DonGiaNhap, DonGiaBan)
+    SELECT d.MaSach, 0, 0, 0
+    FROM @DeltaNhap d LEFT JOIN KhoSach k ON k.MaSach = d.MaSach
+    WHERE k.MaSach IS NULL AND d.SoLuong >= 0;
+
+    UPDATE k SET k.SoLuong = k.SoLuong + d.SoLuong
+    FROM KhoSach k JOIN @DeltaNhap d ON d.MaSach = k.MaSach;
+
+    UPDATE k
+    SET k.DonGiaNhap = ISNULL(g.DonGiaNhap, 0),
+        k.DonGiaBan = ROUND(ISNULL(g.DonGiaNhap, 0) * 1.1, 0)
+    FROM KhoSach k
+    JOIN @DeltaNhap d ON d.MaSach = k.MaSach
+    OUTER APPLY (
+        SELECT TOP (1) c.DonGiaNhap
+        FROM ChiTietHDN c
+        WHERE c.MaSach = k.MaSach
+        ORDER BY c.SoHDN DESC
+    ) g;
 
     UPDATE h
     SET h.TongTien = ISNULL((SELECT SUM(c.ThanhTien) FROM ChiTietHDN c WHERE c.SoHDN = h.SoHDN), 0)
     FROM HoaDonNhap h
-    WHERE h.SoHDN IN (SELECT SoHDN FROM deleted);
+    WHERE h.SoHDN IN (SELECT SoHDN FROM inserted UNION SELECT SoHDN FROM deleted);
 END
 GO
 
-/* ---- 3.3 Bán hàng: kiểm tra tồn kho, lấy giá bán từ kho, trừ kho, tính tổng tiền ---- */
+/* Bán: khóa dòng kho trong lúc kiểm tra để các giao dịch đồng thời không bán vượt tồn. */
 CREATE TRIGGER trg_ChiTietHDB_Ins ON ChiTietHDB INSTEAD OF INSERT AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF EXISTS (SELECT 1 FROM inserted i
-               LEFT JOIN KhoSach k ON k.MaSach = i.MaSach
-               WHERE k.MaSach IS NULL OR k.SoLuong < i.SLBan)
+    DECLARE @Ban TABLE (MaSach INT PRIMARY KEY, SLBan INT NOT NULL);
+    INSERT INTO @Ban SELECT MaSach, SUM(SLBan) FROM inserted GROUP BY MaSach;
+
+    IF EXISTS (
+        SELECT 1 FROM @Ban b
+        LEFT JOIN KhoSach k WITH (UPDLOCK, HOLDLOCK) ON k.MaSach = b.MaSach
+        WHERE k.MaSach IS NULL OR k.SoLuong < b.SLBan
+    )
     BEGIN
         RAISERROR(N'Số lượng tồn kho không đủ hoặc sách chưa có trong kho.', 16, 1);
         ROLLBACK TRANSACTION;
         RETURN;
-    END
+    END;
 
     INSERT INTO ChiTietHDB (SoHDB, MaSach, SLBan, DonGiaBan, KhuyenMai)
     SELECT i.SoHDB, i.MaSach, i.SLBan, k.DonGiaBan, i.KhuyenMai
     FROM inserted i JOIN KhoSach k ON k.MaSach = i.MaSach;
 
-    UPDATE k SET k.SoLuong = k.SoLuong - i.SLBan
-    FROM KhoSach k JOIN inserted i ON i.MaSach = k.MaSach;
+    UPDATE k SET k.SoLuong = k.SoLuong - b.SLBan
+    FROM KhoSach k JOIN @Ban b ON b.MaSach = k.MaSach;
 
     UPDATE h
     SET h.TongTien = ISNULL((SELECT SUM(c.ThanhTien) FROM ChiTietHDB c WHERE c.SoHDB = h.SoHDB), 0)
@@ -220,45 +231,78 @@ BEGIN
 END
 GO
 
-/* ---- 3.4 Xoá chi tiết bán: hoàn lại kho ---- */
-CREATE TRIGGER trg_ChiTietHDB_Del ON ChiTietHDB AFTER DELETE AS
+CREATE TRIGGER trg_ChiTietHDB_Upd ON ChiTietHDB AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
+    -- Trigger tự đặt lại DonGiaBan; bỏ qua lần gọi lồng do chính thao tác này tạo ra.
+    IF TRIGGER_NESTLEVEL() > 1 RETURN;
 
-    UPDATE k SET k.SoLuong = k.SoLuong + d.SLBan
-    FROM KhoSach k JOIN deleted d ON d.MaSach = k.MaSach;
+    DECLARE @Delta TABLE (MaSach INT PRIMARY KEY, SL INT NOT NULL);
+    INSERT INTO @Delta
+    SELECT MaSach, SUM(SL) FROM (
+        SELECT MaSach, SLBan AS SL FROM deleted
+        UNION ALL SELECT MaSach, -SLBan FROM inserted
+    ) x GROUP BY MaSach;
+
+    IF EXISTS (SELECT 1 FROM @Delta d JOIN KhoSach k WITH (UPDLOCK, HOLDLOCK) ON k.MaSach = d.MaSach
+               WHERE k.SoLuong + d.SL < 0)
+       OR EXISTS (SELECT 1 FROM @Delta d LEFT JOIN KhoSach k ON k.MaSach = d.MaSach WHERE k.MaSach IS NULL AND d.SL < 0)
+    BEGIN
+        RAISERROR(N'Số lượng tồn kho không đủ để sửa chi tiết bán.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    UPDATE c SET c.DonGiaBan = k.DonGiaBan
+    FROM ChiTietHDB c JOIN inserted i ON i.SoHDB = c.SoHDB AND i.MaSach = c.MaSach
+    JOIN KhoSach k ON k.MaSach = c.MaSach;
+
+    UPDATE k SET k.SoLuong = k.SoLuong + d.SL
+    FROM KhoSach k JOIN @Delta d ON d.MaSach = k.MaSach;
 
     UPDATE h
     SET h.TongTien = ISNULL((SELECT SUM(c.ThanhTien) FROM ChiTietHDB c WHERE c.SoHDB = h.SoHDB), 0)
     FROM HoaDonBan h
-    WHERE h.SoHDB IN (SELECT SoHDB FROM deleted);
+    WHERE h.SoHDB IN (SELECT SoHDB FROM inserted UNION SELECT SoHDB FROM deleted);
 END
 GO
 
-/* ---- 3.5 Mất sách: trừ kho ---- */
-CREATE TRIGGER trg_MatSach_Ins ON MatSach AFTER INSERT AS
+CREATE TRIGGER trg_ChiTietHDB_Del ON ChiTietHDB AFTER DELETE AS
 BEGIN
     SET NOCOUNT ON;
+    UPDATE k SET k.SoLuong = k.SoLuong + d.SLBan
+    FROM KhoSach k JOIN (SELECT MaSach, SUM(SLBan) AS SLBan FROM deleted GROUP BY MaSach) d ON d.MaSach = k.MaSach;
 
-    IF EXISTS (SELECT 1 FROM inserted i
-               LEFT JOIN KhoSach k ON k.MaSach = i.MaSach
-               WHERE k.MaSach IS NULL OR k.SoLuong < i.SLMat)
+    UPDATE h
+    SET h.TongTien = ISNULL((SELECT SUM(c.ThanhTien) FROM ChiTietHDB c WHERE c.SoHDB = h.SoHDB), 0)
+    FROM HoaDonBan h WHERE h.SoHDB IN (SELECT SoHDB FROM deleted);
+END
+GO
+
+CREATE TRIGGER trg_MatSach_Stock ON MatSach AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Delta TABLE (MaSach INT PRIMARY KEY, SL INT NOT NULL);
+    INSERT INTO @Delta
+    SELECT MaSach, SUM(SL) FROM (
+        SELECT MaSach, -SLMat AS SL FROM inserted
+        UNION ALL SELECT MaSach, SLMat FROM deleted
+    ) x GROUP BY MaSach;
+
+    IF EXISTS (SELECT 1 FROM @Delta d LEFT JOIN KhoSach k WITH (UPDLOCK, HOLDLOCK) ON k.MaSach = d.MaSach
+               WHERE k.MaSach IS NULL AND d.SL < 0 OR k.MaSach IS NOT NULL AND k.SoLuong + d.SL < 0)
     BEGIN
-        RAISERROR(N'Số lượng sách mất lớn hơn số lượng tồn kho.', 16, 1);
+        RAISERROR(N'Số lượng tồn kho không đủ để ghi nhận sách mất.', 16, 1);
         ROLLBACK TRANSACTION;
         RETURN;
-    END
+    END;
 
-    UPDATE k SET k.SoLuong = k.SoLuong - i.SLMat
-    FROM KhoSach k JOIN inserted i ON i.MaSach = k.MaSach;
-END
-GO
+    INSERT INTO KhoSach (MaSach, SoLuong, DonGiaNhap, DonGiaBan)
+    SELECT d.MaSach, 0, 0, 0 FROM @Delta d LEFT JOIN KhoSach k ON k.MaSach = d.MaSach
+    WHERE k.MaSach IS NULL AND d.SL >= 0;
 
-CREATE TRIGGER trg_MatSach_Del ON MatSach AFTER DELETE AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE k SET k.SoLuong = k.SoLuong + d.SLMat
-    FROM KhoSach k JOIN deleted d ON d.MaSach = k.MaSach;
+    UPDATE k SET k.SoLuong = k.SoLuong + d.SL
+    FROM KhoSach k JOIN @Delta d ON d.MaSach = k.MaSach;
 END
 GO
 
@@ -273,9 +317,13 @@ CREATE PROCEDURE sp_TimSach
     @MaNgonNgu INT = NULL
 AS
 BEGIN
-    SELECT s.MaSach, s.TenSach, l.TenLoai, tg.TenTG, x.TenNXB,
+    SELECT s.MaSach, s.TenSach, s.MaLoai, s.MaTG, s.MaNXB,
+           s.MaLinhVuc, s.MaNgonNgu, s.SoTrang, s.Anh,
+           l.TenLoai, tg.TenTG, x.TenNXB,
            lv.TenLinhVuc, nn.TenNgonNgu,
-           ISNULL(k.SoLuong, 0) AS SoLuong, ISNULL(k.DonGiaBan, 0) AS DonGiaBan
+           ISNULL(k.SoLuong, 0) AS SoLuong,
+           ISNULL(k.DonGiaNhap, 0) AS DonGiaNhap,
+           ISNULL(k.DonGiaBan, 0) AS DonGiaBan
     FROM Sach s
     JOIN LoaiSach l ON l.MaLoai = s.MaLoai
     LEFT JOIN TacGia tg ON tg.MaTG = s.MaTG

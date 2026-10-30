@@ -48,6 +48,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\DB.cs" />
+    <Compile Include="DanhMuc\CatalogForms.cs" />
+    <Compile Include="DanhMuc\frmSach.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HoaDon\frmNhapHang.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HoaDon\frmMatSach.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="frmMain.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -82,8 +92,6 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="DanhMuc\" />
-    <Folder Include="HoaDon\" />
     <Folder Include="ThongKe\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
