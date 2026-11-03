@@ -23,3 +23,4 @@ C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangS
 C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.frmNhapHang.resources
 C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.frmNhanVien.resources
 C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.frmTimKiem.resources
+C:\Users\PC\OneDrive\Documents\My Web Sites\BTL\QuanLyCuaHangSach\QuanLyCuaHangSach\obj\Debug\QuanLyCuaHangSach.frmBanHang.resources

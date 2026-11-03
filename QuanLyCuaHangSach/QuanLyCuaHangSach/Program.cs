@@ -16,6 +16,10 @@ namespace QuanLyCuaHangSach
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            using (var login = new frmDangNhap())
+            {
+                if (login.ShowDialog() != DialogResult.OK) return;
+            }
             Application.Run(new frmMain());
         }
     }

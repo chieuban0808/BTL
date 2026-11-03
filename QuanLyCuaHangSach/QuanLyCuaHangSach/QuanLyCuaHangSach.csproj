@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\DB.cs" />
+    <Compile Include="Classes\AppSession.cs" />
     <Compile Include="DanhMuc\CatalogForms.cs" />
     <Compile Include="DanhMuc\CatalogFormBase.Designer.cs">
       <DependentUpon>CatalogForms.cs</DependentUpon>
@@ -69,6 +70,18 @@
     </Compile>
     <Compile Include="DanhMuc\frmLoaiSach.Designer.cs">
       <DependentUpon>frmLoaiSach.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DanhMuc\frmLinhVuc.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DanhMuc\frmLinhVuc.Designer.cs">
+      <DependentUpon>frmLinhVuc.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DanhMuc\frmNgonNgu.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DanhMuc\frmNgonNgu.Designer.cs">
+      <DependentUpon>frmNgonNgu.cs</DependentUpon>
     </Compile>
     <Compile Include="DanhMuc\frmTacGia.cs">
       <SubType>Form</SubType>
@@ -136,6 +149,12 @@
     <Compile Include="frmMain.Designer.cs">
       <DependentUpon>frmMain.cs</DependentUpon>
     </Compile>
+    <Compile Include="frmDangNhap.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="frmDangNhap.Designer.cs">
+      <DependentUpon>frmDangNhap.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="DanhMuc\frmSach.resx">
@@ -146,6 +165,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="frmMain.resx">
       <DependentUpon>frmMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="HoaDon\frmBanHang.resx">
+      <DependentUpon>frmBanHang.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="HoaDon\frmMatSach.resx">
       <DependentUpon>frmMatSach.cs</DependentUpon>
