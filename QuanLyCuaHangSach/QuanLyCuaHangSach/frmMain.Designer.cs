@@ -7,11 +7,13 @@ namespace QuanLyCuaHangSach
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Button btnSach;
         private System.Windows.Forms.Button btnNhapHang;
+        private System.Windows.Forms.Button btnBanHang;
         private System.Windows.Forms.Button btnMatSach;
         private System.Windows.Forms.Button btnLoaiSach;
         private System.Windows.Forms.Button btnTacGia;
         private System.Windows.Forms.Button btnNXB;
         private System.Windows.Forms.Button btnNhaCungCap;
+        private System.Windows.Forms.Button btnKhachHang;
         private System.Windows.Forms.Button btnNhanVien;
         private System.Windows.Forms.Button btnCongViec;
         private System.Windows.Forms.Button btnTimKiem;
@@ -29,11 +31,13 @@ namespace QuanLyCuaHangSach
             this.lblTitle = new System.Windows.Forms.Label();
             this.btnSach = new System.Windows.Forms.Button();
             this.btnNhapHang = new System.Windows.Forms.Button();
+            this.btnBanHang = new System.Windows.Forms.Button();
             this.btnMatSach = new System.Windows.Forms.Button();
             this.btnLoaiSach = new System.Windows.Forms.Button();
             this.btnTacGia = new System.Windows.Forms.Button();
             this.btnNXB = new System.Windows.Forms.Button();
             this.btnNhaCungCap = new System.Windows.Forms.Button();
+            this.btnKhachHang = new System.Windows.Forms.Button();
             this.btnNhanVien = new System.Windows.Forms.Button();
             this.btnCongViec = new System.Windows.Forms.Button();
             this.btnTimKiem = new System.Windows.Forms.Button();
@@ -46,11 +50,13 @@ namespace QuanLyCuaHangSach
             this.flowMenu.AutoScroll = true;
             this.flowMenu.Controls.Add(this.btnSach);
             this.flowMenu.Controls.Add(this.btnNhapHang);
+            this.flowMenu.Controls.Add(this.btnBanHang);
             this.flowMenu.Controls.Add(this.btnMatSach);
             this.flowMenu.Controls.Add(this.btnLoaiSach);
             this.flowMenu.Controls.Add(this.btnTacGia);
             this.flowMenu.Controls.Add(this.btnNXB);
             this.flowMenu.Controls.Add(this.btnNhaCungCap);
+            this.flowMenu.Controls.Add(this.btnKhachHang);
             this.flowMenu.Controls.Add(this.btnNhanVien);
             this.flowMenu.Controls.Add(this.btnCongViec);
             this.flowMenu.Controls.Add(this.btnTimKiem);
@@ -93,6 +99,16 @@ namespace QuanLyCuaHangSach
             this.btnNhapHang.Text = "Nhập hàng";
             this.btnNhapHang.UseVisualStyleBackColor = false;
             this.btnNhapHang.Click += new System.EventHandler(this.btnNhapHang_Click);
+
+            this.btnBanHang.BackColor = System.Drawing.Color.FromArgb(235, 242, 250);
+            this.btnBanHang.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnBanHang.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.btnBanHang.Margin = new System.Windows.Forms.Padding(12);
+            this.btnBanHang.Name = "btnBanHang";
+            this.btnBanHang.Size = new System.Drawing.Size(250, 112);
+            this.btnBanHang.Text = "Bán hàng";
+            this.btnBanHang.UseVisualStyleBackColor = false;
+            this.btnBanHang.Click += new System.EventHandler(this.btnBanHang_Click);
 
             this.btnMatSach.BackColor = System.Drawing.Color.FromArgb(235, 242, 250);
             this.btnMatSach.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -143,6 +159,16 @@ namespace QuanLyCuaHangSach
             this.btnNhaCungCap.Text = "Nhà cung cấp";
             this.btnNhaCungCap.UseVisualStyleBackColor = false;
             this.btnNhaCungCap.Click += new System.EventHandler(this.btnNhaCungCap_Click);
+
+            this.btnKhachHang.BackColor = System.Drawing.Color.FromArgb(235, 242, 250);
+            this.btnKhachHang.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnKhachHang.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.btnKhachHang.Margin = new System.Windows.Forms.Padding(12);
+            this.btnKhachHang.Name = "btnKhachHang";
+            this.btnKhachHang.Size = new System.Drawing.Size(250, 112);
+            this.btnKhachHang.Text = "Khách hàng";
+            this.btnKhachHang.UseVisualStyleBackColor = false;
+            this.btnKhachHang.Click += new System.EventHandler(this.btnKhachHang_Click);
 
             this.btnNhanVien.BackColor = System.Drawing.Color.FromArgb(235, 242, 250);
             this.btnNhanVien.FlatStyle = System.Windows.Forms.FlatStyle.Flat;

@@ -85,6 +85,12 @@
     <Compile Include="DanhMuc\frmNhaCungCap.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="DanhMuc\frmKhachHang.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DanhMuc\frmKhachHang.Designer.cs">
+      <DependentUpon>frmKhachHang.cs</DependentUpon>
+    </Compile>
     <Compile Include="DanhMuc\frmNhaCungCap.Designer.cs">
       <DependentUpon>frmNhaCungCap.cs</DependentUpon>
     </Compile>
@@ -96,6 +102,12 @@
     </Compile>
     <Compile Include="HoaDon\frmNhapHang.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HoaDon\frmBanHang.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HoaDon\frmBanHang.Designer.cs">
+      <DependentUpon>frmBanHang.cs</DependentUpon>
     </Compile>
     <Compile Include="HoaDon\frmNhapHang.Designer.cs">
       <DependentUpon>frmNhapHang.cs</DependentUpon>

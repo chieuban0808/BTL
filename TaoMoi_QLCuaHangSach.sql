@@ -1,3 +1,10 @@
+:ON ERROR EXIT
+/*
+  CAI MOI DATABASE QLCuaHangSach.
+  CANH BAO: Script se xoa database QLCuaHangSach neu da ton tai, sau do tao lai
+  schema, trigger, stored procedure va du lieu mau. Toan bo du lieu cu se mat.
+  Dong ung dung truoc khi chay. Bat Query > SQLCMD Mode trong SSMS.
+*/
 /* ============================================================
    CSDL: QUẢN LÝ CỬA HÀNG BÁN SÁCH  (SQL Server 2012 trở lên)
    Chạy toàn bộ file trong SSMS. Có thể chạy lại nhiều lần
@@ -482,3 +489,4 @@ EXEC sp_Top5HoaDonNhap @Nam = 2026;
 EXEC sp_HoaDonBanTheoQuy @Quy = 3, @Nam = 2026;
 EXEC sp_KhachKhongMuaTheoThang @Thang = 10, @Nam = 2026;
 =============================================================================== */
+
