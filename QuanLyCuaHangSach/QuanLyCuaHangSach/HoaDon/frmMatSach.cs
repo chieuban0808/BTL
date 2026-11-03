@@ -6,125 +6,20 @@ using System.Windows.Forms;
 
 namespace QuanLyCuaHangSach
 {
-    public sealed class frmMatSach : Form
+    public sealed partial class frmMatSach : Form
     {
-        private readonly ComboBox cboSach = new ComboBox();
-        private readonly DateTimePicker dtpNgayMat = new DateTimePicker();
-        private readonly NumericUpDown nudSoLuong = new NumericUpDown();
-        private readonly TextBox txtLyDo = new TextBox();
-        private readonly DataGridView grid = new DataGridView();
-
         public frmMatSach()
         {
-            Text = "Ghi nhận sách mất";
+            InitializeComponent();
+            if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime) return;
             StartPosition = FormStartPosition.CenterParent;
-            MinimumSize = new Size(850, 560);
-            Size = new Size(1020, 670);
-            Font = new Font("Segoe UI", 9F);
-
-            var root = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(14),
-                ColumnCount = 1,
-                RowCount = 4
-            };
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            var title = new Label
-            {
-                Text = "GHI NHẬN SÁCH MẤT",
-                Dock = DockStyle.Top,
-                Height = 40,
-                Font = new Font("Segoe UI", 15, FontStyle.Bold),
-                ForeColor = Color.FromArgb(35, 64, 102),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            var fields = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                ColumnCount = 4,
-                RowCount = 3,
-                Padding = new Padding(0, 6, 0, 8)
-            };
-            fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 105));
-            fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-            fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95));
-            fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
-            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
-            fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
-
-            cboSach.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboSach.Dock = DockStyle.Fill;
-            cboSach.Margin = new Padding(3, 5, 10, 5);
             cboSach.SelectedIndexChanged += delegate { UpdateStockLimit(); };
-            dtpNgayMat.Format = DateTimePickerFormat.Short;
-            dtpNgayMat.Value = DateTime.Today;
-            dtpNgayMat.Dock = DockStyle.Left;
-            nudSoLuong.Minimum = 1;
-            nudSoLuong.Maximum = int.MaxValue;
-            nudSoLuong.Value = 1;
-            nudSoLuong.Width = 120;
-            nudSoLuong.Margin = new Padding(3, 5, 10, 5);
-            txtLyDo.Dock = DockStyle.Fill;
-            txtLyDo.MaxLength = 200;
-            txtLyDo.Multiline = true;
-
-            fields.Controls.Add(MakeLabel("Sách *"), 0, 0);
-            fields.Controls.Add(cboSach, 1, 0);
-            fields.Controls.Add(MakeLabel("Ngày mất"), 2, 0);
-            fields.Controls.Add(dtpNgayMat, 3, 0);
-            fields.Controls.Add(MakeLabel("Số lượng *"), 0, 1);
-            fields.Controls.Add(nudSoLuong, 1, 1);
-            fields.Controls.Add(MakeLabel("Lý do"), 0, 2);
-            fields.Controls.Add(txtLyDo, 1, 2);
-            fields.SetColumnSpan(txtLyDo, 3);
-
-            var actions = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                Padding = new Padding(0, 0, 0, 6)
-            };
-            actions.Controls.Add(MakeButton("Ghi nhận mất", delegate { SaveLoss(); }));
-            actions.Controls.Add(MakeButton("Làm mới", delegate { ClearEntry(); }));
-            actions.Controls.Add(MakeButton("Xóa bản ghi đang chọn", delegate { DeleteSelectedLoss(); }));
-            actions.Controls.Add(MakeButton("Tải lại", delegate { LoadData(); }));
-
-            grid.Dock = DockStyle.Fill;
-            grid.ReadOnly = true;
-            grid.AllowUserToAddRows = false;
-            grid.AllowUserToDeleteRows = false;
-            grid.MultiSelect = false;
-            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            grid.BackgroundColor = Color.White;
-
-            root.Controls.Add(title, 0, 0);
-            root.Controls.Add(fields, 0, 1);
-            root.Controls.Add(actions, 0, 2);
-            root.Controls.Add(grid, 0, 3);
-            Controls.Add(root);
+            btnGhiNhan.Click += delegate { SaveLoss(); };
+            btnLamMoi.Click += delegate { ClearEntry(); };
+            btnXoa.Click += delegate { DeleteSelectedLoss(); };
+            btnTaiLai.Click += delegate { LoadData(); };
 
             Load += delegate { LoadData(); };
-        }
-
-        private static Label MakeLabel(string text)
-        {
-            return new Label { Text = text, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-        }
-
-        private static Button MakeButton(string text, EventHandler click)
-        {
-            var button = new Button { Text = text, AutoSize = true, Height = 34, Margin = new Padding(4) };
-            button.Click += click;
-            return button;
         }
 
         private void LoadData()

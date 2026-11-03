@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
@@ -28,44 +29,47 @@ namespace QuanLyCuaHangSach
         }
     }
 
-    public abstract class CatalogFormBase : Form
+    public partial class CatalogFormBase : Form
     {
         private readonly string tableName;
         private readonly string keyName;
         private readonly CatalogField[] fields;
         private readonly Dictionary<string, TextBox> editors = new Dictionary<string, TextBox>();
-        private readonly DataGridView grid = new DataGridView();
         private int? selectedId;
+
+        // Constructor không tham số để WinForms Designer có thể nạp lớp cơ sở.
+        // Các form danh mục thật dùng constructor có metadata bên dưới.
+        public CatalogFormBase()
+        {
+            tableName = string.Empty;
+            keyName = string.Empty;
+            fields = new CatalogField[0];
+            InitializeComponent();
+            WireUiEvents();
+        }
 
         protected CatalogFormBase(string title, string table, string key, params CatalogField[] catalogFields)
         {
             tableName = table;
             keyName = key;
             fields = catalogFields;
+            InitializeComponent();
             Text = title;
+            lblTitle.Text = title.ToUpperInvariant();
+            BuildFieldEditors();
+            WireUiEvents();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
             StartPosition = FormStartPosition.CenterParent;
             MinimumSize = new Size(760, 500);
             Size = new Size(900, 620);
             Font = new Font("Segoe UI", 9F);
+            Load += delegate { LoadRows(); };
+        }
 
-            var layout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(14),
-                ColumnCount = 1,
-                RowCount = 3
-            };
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            var editorPanel = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                WrapContents = true,
-                Padding = new Padding(0, 0, 0, 8)
-            };
+        private void BuildFieldEditors()
+        {
+            editorFields.Controls.Clear();
+            editors.Clear();
             foreach (var field in fields)
             {
                 var block = new Panel { Width = 390, Height = 60, Margin = new Padding(4) };
@@ -87,42 +91,17 @@ namespace QuanLyCuaHangSach
                 editors.Add(field.Name, editor);
                 block.Controls.Add(label);
                 block.Controls.Add(editor);
-                editorPanel.Controls.Add(block);
+                editorFields.Controls.Add(block);
             }
-
-            var actions = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                Padding = new Padding(0, 0, 0, 8)
-            };
-            actions.Controls.Add(MakeButton("Thêm mới", delegate { ClearEditors(); }));
-            actions.Controls.Add(MakeButton("Lưu", delegate { SaveRecord(); }));
-            actions.Controls.Add(MakeButton("Xóa", delegate { DeleteRecord(); }));
-            actions.Controls.Add(MakeButton("Tải lại", delegate { LoadRows(); ClearEditors(); }));
-
-            grid.Dock = DockStyle.Fill;
-            grid.ReadOnly = true;
-            grid.AllowUserToAddRows = false;
-            grid.AllowUserToDeleteRows = false;
-            grid.MultiSelect = false;
-            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            grid.BackgroundColor = Color.White;
-            grid.CellClick += Grid_CellClick;
-
-            layout.Controls.Add(editorPanel, 0, 0);
-            layout.Controls.Add(actions, 0, 1);
-            layout.Controls.Add(grid, 0, 2);
-            Controls.Add(layout);
-            Load += delegate { LoadRows(); };
         }
 
-        private static Button MakeButton(string text, EventHandler click)
+        private void WireUiEvents()
         {
-            var button = new Button { Text = text, AutoSize = true, Height = 34, Margin = new Padding(4) };
-            button.Click += click;
-            return button;
+            btnThem.Click += delegate { ClearEditors(); };
+            btnLuu.Click += delegate { SaveRecord(); };
+            btnXoa.Click += delegate { DeleteRecord(); };
+            btnTaiLai.Click += delegate { if (fields.Length > 0) LoadRows(); ClearEditors(); };
+            grid.CellClick += Grid_CellClick;
         }
 
         private void LoadRows()
@@ -242,26 +221,4 @@ namespace QuanLyCuaHangSach
         }
     }
 
-    public sealed class frmLoaiSach : CatalogFormBase
-    {
-        public frmLoaiSach() : base("Danh mục loại sách", "LoaiSach", "MaLoai",
-            new CatalogField("TenLoai", "Tên loại sách", CatalogValueKind.Text, true, 100)) { }
-    }
-
-    public sealed class frmTacGia : CatalogFormBase
-    {
-        public frmTacGia() : base("Danh mục tác giả", "TacGia", "MaTG",
-            new CatalogField("TenTG", "Tên tác giả", CatalogValueKind.Text, true, 100),
-            new CatalogField("NgaySinh", "Ngày sinh (ví dụ 15/08/1980)", CatalogValueKind.Date, false, 0),
-            new CatalogField("GioiTinh", "Giới tính", CatalogValueKind.Text, false, 5),
-            new CatalogField("DiaChi", "Địa chỉ", CatalogValueKind.Text, false, 200)) { }
-    }
-
-    public sealed class frmNXB : CatalogFormBase
-    {
-        public frmNXB() : base("Danh mục nhà xuất bản", "NXB", "MaNXB",
-            new CatalogField("TenNXB", "Tên nhà xuất bản", CatalogValueKind.Text, true, 150),
-            new CatalogField("DiaChi", "Địa chỉ", CatalogValueKind.Text, false, 200),
-            new CatalogField("DienThoai", "Điện thoại", CatalogValueKind.Text, false, 15)) { }
-    }
 }

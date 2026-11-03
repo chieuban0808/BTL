@@ -16,6 +16,11 @@ namespace QuanLyCuaHangSach
         private void btnLoaiSach_Click(object sender, EventArgs e) { OpenForm(new frmLoaiSach()); }
         private void btnTacGia_Click(object sender, EventArgs e) { OpenForm(new frmTacGia()); }
         private void btnNXB_Click(object sender, EventArgs e) { OpenForm(new frmNXB()); }
+        private void btnNhaCungCap_Click(object sender, EventArgs e) { OpenForm(new frmNhaCungCap()); }
+        private void btnNhanVien_Click(object sender, EventArgs e) { OpenForm(new frmNhanVien()); }
+        private void btnCongViec_Click(object sender, EventArgs e) { OpenForm(new frmCongViec()); }
+        private void btnTimKiem_Click(object sender, EventArgs e) { OpenForm(new frmTimKiem()); }
+        private void btnBaoCao_Click(object sender, EventArgs e) { OpenForm(new frmBaoCao()); }
 
         private void OpenForm(Form form)
         {

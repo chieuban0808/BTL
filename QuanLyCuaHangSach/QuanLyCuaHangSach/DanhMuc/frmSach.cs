@@ -6,114 +6,22 @@ using System.Windows.Forms;
 
 namespace QuanLyCuaHangSach
 {
-    public sealed class frmSach : Form
+    public sealed partial class frmSach : Form
     {
-        private readonly TextBox txtTenSach = new TextBox();
-        private readonly TextBox txtSoTrang = new TextBox();
-        private readonly TextBox txtAnh = new TextBox();
-        private readonly TextBox txtTim = new TextBox();
-        private readonly ComboBox cboLoai = new ComboBox();
-        private readonly ComboBox cboTacGia = new ComboBox();
-        private readonly ComboBox cboNXB = new ComboBox();
-        private readonly ComboBox cboLinhVuc = new ComboBox();
-        private readonly ComboBox cboNgonNgu = new ComboBox();
-        private readonly DataGridView grid = new DataGridView();
         private int? selectedId;
 
         public frmSach()
         {
-            Text = "Danh mục sách và kho sách";
+            InitializeComponent();
+            if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime) return;
             StartPosition = FormStartPosition.CenterParent;
-            MinimumSize = new Size(1020, 650);
-            Size = new Size(1240, 780);
-            Font = new Font("Segoe UI", 9F);
-
-            var root = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(12),
-                ColumnCount = 1,
-                RowCount = 4
-            };
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            var caption = new Label
-            {
-                Text = "SÁCH VÀ KHO SÁCH",
-                Dock = DockStyle.Top,
-                Height = 36,
-                Font = new Font("Segoe UI", 15, FontStyle.Bold),
-                ForeColor = Color.FromArgb(35, 64, 102),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            var editor = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                ColumnCount = 4,
-                RowCount = 4,
-                Padding = new Padding(0, 4, 0, 6)
-            };
-            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
-            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
-            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            AddEditorRow(editor, 0, "Tên sách *", txtTenSach, "Loại sách *", cboLoai);
-            AddEditorRow(editor, 1, "Tác giả", cboTacGia, "Nhà xuất bản", cboNXB);
-            AddEditorRow(editor, 2, "Lĩnh vực", cboLinhVuc, "Ngôn ngữ", cboNgonNgu);
-            AddEditorRow(editor, 3, "Số trang", txtSoTrang, "Ảnh bìa", txtAnh);
-
-            foreach (var combo in new[] { cboLoai, cboTacGia, cboNXB, cboLinhVuc, cboNgonNgu })
-            {
-                combo.DropDownStyle = ComboBoxStyle.DropDownList;
-                combo.Dock = DockStyle.Fill;
-                combo.Margin = new Padding(3, 5, 10, 5);
-            }
-            foreach (var textBox in new[] { txtTenSach, txtSoTrang, txtAnh })
-            {
-                textBox.Dock = DockStyle.Fill;
-                textBox.Margin = new Padding(3, 5, 10, 5);
-            }
-            txtTenSach.MaxLength = 200;
-            txtAnh.MaxLength = 260;
-
-            var actions = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                WrapContents = true,
-                Padding = new Padding(0, 0, 0, 6)
-            };
-            actions.Controls.Add(MakeButton("Thêm mới", delegate { ClearEditors(); }));
-            actions.Controls.Add(MakeButton("Lưu", delegate { SaveRecord(); }));
-            actions.Controls.Add(MakeButton("Xóa", delegate { DeleteRecord(); }));
-            actions.Controls.Add(new Label { Text = "Tìm tên sách:", AutoSize = true, Padding = new Padding(10, 9, 0, 0) });
-            txtTim.Width = 240;
-            txtTim.Margin = new Padding(4, 3, 4, 3);
             txtTim.KeyDown += delegate(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; LoadBooks(); } };
-            actions.Controls.Add(txtTim);
-            actions.Controls.Add(MakeButton("Tìm", delegate { LoadBooks(); }));
-            actions.Controls.Add(MakeButton("Tất cả", delegate { txtTim.Clear(); LoadBooks(); }));
-
-            grid.Dock = DockStyle.Fill;
-            grid.ReadOnly = true;
-            grid.AllowUserToAddRows = false;
-            grid.AllowUserToDeleteRows = false;
-            grid.MultiSelect = false;
-            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
-            grid.BackgroundColor = Color.White;
             grid.CellClick += Grid_CellClick;
-
-            root.Controls.Add(caption, 0, 0);
-            root.Controls.Add(editor, 0, 1);
-            root.Controls.Add(actions, 0, 2);
-            root.Controls.Add(grid, 0, 3);
-            Controls.Add(root);
+            btnThem.Click += delegate { ClearEditors(); };
+            btnLuu.Click += delegate { SaveRecord(); };
+            btnXoa.Click += delegate { DeleteRecord(); };
+            btnTim.Click += delegate { LoadBooks(); };
+            btnTatCa.Click += delegate { txtTim.Clear(); LoadBooks(); };
 
             Load += delegate
             {
@@ -124,24 +32,6 @@ namespace QuanLyCuaHangSach
                 }
                 catch (Exception ex) { ShowError(ex); }
             };
-        }
-
-        private static void AddEditorRow(TableLayoutPanel panel, int row, string leftCaption, Control left, string rightCaption, Control right)
-        {
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
-            var leftLabel = new Label { Text = leftCaption, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            var rightLabel = new Label { Text = rightCaption, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            panel.Controls.Add(leftLabel, 0, row);
-            panel.Controls.Add(left, 1, row);
-            panel.Controls.Add(rightLabel, 2, row);
-            panel.Controls.Add(right, 3, row);
-        }
-
-        private static Button MakeButton(string text, EventHandler click)
-        {
-            var button = new Button { Text = text, AutoSize = true, Height = 34, Margin = new Padding(4) };
-            button.Click += click;
-            return button;
         }
 
         private void LoadLookups()

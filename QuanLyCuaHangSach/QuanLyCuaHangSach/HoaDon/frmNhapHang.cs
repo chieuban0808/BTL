@@ -10,132 +10,25 @@ using System.Windows.Forms;
 
 namespace QuanLyCuaHangSach
 {
-    public sealed class frmNhapHang : Form
+    public partial class frmNhapHang : System.Windows.Forms.Form
     {
-        private readonly ComboBox cboNhanVien = new ComboBox();
-        private readonly ComboBox cboNhaCungCap = new ComboBox();
-        private readonly DateTimePicker dtpNgayNhap = new DateTimePicker();
-        private readonly DataGridView grid = new DataGridView();
-        private readonly Label lblTongTien = new Label();
         private DataTable sachData;
         private bool recalculating;
 
         public frmNhapHang()
         {
-            Text = "Lập hóa đơn nhập hàng";
+            InitializeComponent();
+            if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime) return;
             StartPosition = FormStartPosition.CenterParent;
-            MinimumSize = new Size(900, 600);
-            Size = new Size(1120, 700);
-            Font = new Font("Segoe UI", 9F);
-
-            var root = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(14),
-                ColumnCount = 1,
-                RowCount = 4
-            };
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-            var title = new Label
-            {
-                Text = "HÓA ĐƠN NHẬP HÀNG",
-                Dock = DockStyle.Top,
-                Height = 40,
-                Font = new Font("Segoe UI", 15, FontStyle.Bold),
-                ForeColor = Color.FromArgb(35, 64, 102),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            var invoiceInfo = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                ColumnCount = 4,
-                RowCount = 1,
-                Padding = new Padding(0, 5, 0, 10)
-            };
-            invoiceInfo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-            invoiceInfo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            invoiceInfo.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-            invoiceInfo.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            invoiceInfo.Controls.Add(new Label { Text = "Nhân viên *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-            invoiceInfo.Controls.Add(cboNhanVien, 1, 0);
-            invoiceInfo.Controls.Add(new Label { Text = "Nhà cung cấp *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 2, 0);
-            invoiceInfo.Controls.Add(cboNhaCungCap, 3, 0);
-            cboNhanVien.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboNhaCungCap.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboNhanVien.Dock = DockStyle.Fill;
-            cboNhaCungCap.Dock = DockStyle.Fill;
-            cboNhanVien.Margin = new Padding(3, 4, 14, 4);
-            cboNhaCungCap.Margin = new Padding(3, 4, 14, 4);
-            dtpNgayNhap.Format = DateTimePickerFormat.Short;
-            dtpNgayNhap.Value = DateTime.Today;
-            invoiceInfo.Controls.Add(new Label { Text = "Ngày nhập", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
-            invoiceInfo.Controls.Add(dtpNgayNhap, 1, 1);
-            invoiceInfo.RowCount = 2;
-            invoiceInfo.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            invoiceInfo.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-
             ConfigureGrid();
-
-            var bottom = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 8, 0, 0)
-            };
-            var btnSave = new Button { Text = "Lưu hóa đơn nhập", AutoSize = true, Height = 38, Margin = new Padding(5) };
-            btnSave.Click += delegate { SaveInvoice(); };
-            var btnClear = new Button { Text = "Làm mới", AutoSize = true, Height = 38, Margin = new Padding(5) };
-            btnClear.Click += delegate { ClearInvoice(); };
-            lblTongTien = new Label
-            {
-                Text = "Tổng tiền: 0 đ",
-                AutoSize = true,
-                Font = new Font("Segoe UI", 13, FontStyle.Bold),
-                ForeColor = Color.FromArgb(35, 64, 102),
-                Padding = new Padding(12, 8, 12, 0)
-            };
-            bottom.Controls.Add(btnSave);
-            bottom.Controls.Add(btnClear);
-            bottom.Controls.Add(lblTongTien);
-
-            root.Controls.Add(title, 0, 0);
-            root.Controls.Add(invoiceInfo, 0, 1);
-            root.Controls.Add(grid, 0, 2);
-            root.Controls.Add(bottom, 0, 3);
-            Controls.Add(root);
+            btnLuu.Click += delegate { SaveInvoice(); };
+            btnLamMoi.Click += delegate { ClearInvoice(); };
 
             Load += delegate { LoadLookups(); };
         }
 
         private void ConfigureGrid()
         {
-            grid.Dock = DockStyle.Fill;
-            grid.AllowUserToAddRows = true;
-            grid.AllowUserToDeleteRows = true;
-            grid.MultiSelect = false;
-            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            grid.BackgroundColor = Color.White;
-            grid.RowHeadersVisible = false;
-            grid.Columns.Add(new DataGridViewComboBoxColumn
-            {
-                Name = "MaSach",
-                HeaderText = "Sách",
-                ValueType = typeof(int),
-                DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton,
-                FillWeight = 42
-            });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "SLNhap", HeaderText = "Số lượng", FillWeight = 12, ValueType = typeof(int) });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "DonGiaNhap", HeaderText = "Giá nhập", FillWeight = 16, ValueType = typeof(decimal), DefaultCellStyle = { Format = "N0" } });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "KhuyenMai", HeaderText = "Chiết khấu (%)", FillWeight = 14, ValueType = typeof(decimal), DefaultCellStyle = { Format = "N2" } });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "ThanhTien", HeaderText = "Thành tiền", FillWeight = 18, ReadOnly = true, ValueType = typeof(decimal), DefaultCellStyle = { Format = "N0" } });
             grid.DefaultValuesNeeded += delegate(object sender, DataGridViewRowEventArgs e)
             {
                 e.Row.Cells["SLNhap"].Value = 1;
