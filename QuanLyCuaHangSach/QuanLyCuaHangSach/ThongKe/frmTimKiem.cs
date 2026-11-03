@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace QuanLyCuaHangSach
 {
-    public sealed partial class frmTimKiem : Form
+    public partial class frmTimKiem : Form
     {
         public frmTimKiem()
         {
