@@ -117,14 +117,31 @@ namespace QuanLyCuaHangSach
             if (e.RowIndex < 0) return;
             var row = grid.Rows[e.RowIndex];
             selectedId = Convert.ToInt32(row.Cells["MaSach"].Value);
-            txtTenSach.Text = Convert.ToString(row.Cells["TenSach"].Value);
-            txtSoTrang.Text = row.Cells["SoTrang"].Value == DBNull.Value ? "" : Convert.ToString(row.Cells["SoTrang"].Value);
-            txtAnh.Text = row.Cells["Anh"].Value == DBNull.Value ? "" : Convert.ToString(row.Cells["Anh"].Value);
-            SelectLookup(cboLoai, row.Cells["MaLoai"].Value);
-            SelectLookup(cboTacGia, row.Cells["MaTG"].Value);
-            SelectLookup(cboNXB, row.Cells["MaNXB"].Value);
-            SelectLookup(cboLinhVuc, row.Cells["MaLinhVuc"].Value);
-            SelectLookup(cboNgonNgu, row.Cells["MaNgonNgu"].Value);
+            // sp_TimSach chỉ trả về các cột phục vụ hiển thị, không nhất thiết có
+            // cột Anh hoặc các khóa ngoại. Đọc bản ghi đầy đủ từ bảng Sach để sửa.
+            try
+            {
+                var detail = DB.GetTable(
+                    "SELECT TenSach, MaLoai, MaTG, MaNXB, MaLinhVuc, MaNgonNgu, SoTrang, Anh FROM Sach WHERE MaSach=@MaSach",
+                    new SqlParameter("@MaSach", SqlDbType.Int) { Value = selectedId.Value });
+                if (detail.Rows.Count == 0)
+                {
+                    ClearEditors();
+                    LoadBooks();
+                    return;
+                }
+
+                var book = detail.Rows[0];
+                txtTenSach.Text = Convert.ToString(book["TenSach"]);
+                txtSoTrang.Text = book["SoTrang"] == DBNull.Value ? "" : Convert.ToString(book["SoTrang"]);
+                txtAnh.Text = book["Anh"] == DBNull.Value ? "" : Convert.ToString(book["Anh"]);
+                SelectLookup(cboLoai, book["MaLoai"]);
+                SelectLookup(cboTacGia, book["MaTG"]);
+                SelectLookup(cboNXB, book["MaNXB"]);
+                SelectLookup(cboLinhVuc, book["MaLinhVuc"]);
+                SelectLookup(cboNgonNgu, book["MaNgonNgu"]);
+            }
+            catch (Exception ex) { ShowError(ex); }
         }
 
         private static void SelectLookup(ComboBox combo, object value)
@@ -198,9 +215,25 @@ namespace QuanLyCuaHangSach
             if (MessageBox.Show(this, "Xóa sách đang chọn? Sách đã có giao dịch sẽ không thể xóa.", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
             try
             {
+                var stock = DB.GetTable("SELECT COUNT(*) AS SoDong FROM KhoSach WHERE MaSach=@MaSach",
+                    new SqlParameter("@MaSach", SqlDbType.Int) { Value = selectedId.Value });
+                if (Convert.ToInt32(stock.Rows[0]["SoDong"]) > 0)
+                {
+                    MessageBox.Show(this,
+                        "Không thể xóa sách vì sách đã có dòng tồn kho. Hãy giữ sách trong danh mục để bảo toàn dữ liệu kho và lịch sử giao dịch.",
+                        Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
                 DB.Exec("DELETE FROM Sach WHERE MaSach=@MaSach", new SqlParameter("@MaSach", SqlDbType.Int) { Value = selectedId.Value });
                 ClearEditors();
                 LoadBooks();
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                MessageBox.Show(this,
+                    "Không thể xóa sách vì sách đang được tham chiếu bởi dữ liệu kho hoặc hóa đơn. Hãy giữ sách trong danh mục để bảo toàn lịch sử.",
+                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex) { ShowError(ex); }
         }
