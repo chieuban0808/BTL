@@ -113,8 +113,8 @@ namespace QuanLyCuaHangSach
                 case "stock": ShowTabs("Kho hàng", new[] { "Sách và tồn kho", "Nhập hàng", "Ghi nhận sách mất" }, new Form[] { new frmSach(), new frmNhapHang(), new frmMatSach() }, selectedTab); break;
                 case "catalog": ShowTabs("Danh mục cửa hàng", new[] { "Loại sách", "Lĩnh vực", "Ngôn ngữ", "Tác giả", "Nhà xuất bản", "Nhà cung cấp" }, new Form[] { new frmLoaiSach(), new frmLinhVuc(), new frmNgonNgu(), new frmTacGia(), new frmNXB(), new frmNhaCungCap() }); break;
                 case "lookup":
-                    if (IsManager) ShowTabs("Tra cứu và báo cáo", new[] { "Tìm kiếm", "Báo cáo" }, new Form[] { new frmTimKiem(), new frmBaoCao() });
-                    else ShowTabs("Tìm kiếm", new[] { "Tìm kiếm" }, new Form[] { new frmTimKiem() });
+                    if (IsManager) ShowTabs("Tra cứu và báo cáo", new[] { "Tìm kiếm", "Lịch sử bán", "Báo cáo" }, new Form[] { new frmTimKiem(), new frmLichSuBanHang(), new frmBaoCao() });
+                    else ShowTabs("Tra cứu", new[] { "Tìm kiếm", "Lịch sử bán" }, new Form[] { new frmTimKiem(), new frmLichSuBanHang() });
                     break;
                 case "system": ShowTabs("Hệ thống", new[] { "Nhân viên", "Công việc" }, new Form[] { new frmNhanVien(), new frmCongViec() }); break;
             }

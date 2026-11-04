@@ -1,6 +1,8 @@
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Drawing;
+using System.Drawing.Printing;
 using System.Globalization;
 using System.Text;
 using System.Windows.Forms;
@@ -10,131 +12,336 @@ namespace QuanLyCuaHangSach
     public partial class frmBanHang : Form
     {
         private DataTable books;
-        private bool updating;
+        private int? lastSavedInvoiceId;
+        private DataTable invoiceToPrint;
+        private readonly PrintDocument printDocument = new PrintDocument();
+        private int printRowIndex;
 
         public frmBanHang()
         {
             InitializeComponent();
             if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime) return;
+            components.Add(printDocument);
             StartPosition = FormStartPosition.CenterParent;
+            KeyPreview = true;
+            txtTimSach.TextChanged += delegate { FilterBooks(); };
+            txtTimSach.KeyDown += Search_KeyDown;
+            gridKetQua.CellDoubleClick += delegate { AddSelectedBook(); };
+            btnThemSach.Click += delegate { AddSelectedBook(); };
+            btnThemKhach.Click += delegate { AddCustomerQuickly(); };
             btnLuu.Click += delegate { SaveInvoice(); };
-            btnLamMoi.Click += delegate { ClearInvoice(); };
-            btnTaiLai.Click += delegate { LoadLookups(); LoadInvoices(); };
-            btnXoaChiTiet.Click += delegate { DeleteSelectedDetail(); };
-            cboHoaDon.SelectedIndexChanged += delegate { LoadInvoiceDetails(); };
-            grid.DefaultValuesNeeded += delegate(object sender, DataGridViewRowEventArgs e)
+            btnLamMoi.Click += delegate { CancelInvoice(); };
+            btnIn.Click += delegate { PrintLastInvoice(); };
+            btnTang.Click += delegate { ChangeSelectedQuantity(1); };
+            btnGiam.Click += delegate { ChangeSelectedQuantity(-1); };
+            btnXoaDong.Click += delegate { RemoveSelectedBook(); };
+            grid.CellValidating += ValidateCartCell;
+            grid.CellValueChanged += delegate { UpdateCartTotals(); };
+            grid.CellEndEdit += delegate(object sender, DataGridViewCellEventArgs e)
             {
-                e.Row.Cells["SLBan"].Value = 1;
-                e.Row.Cells["KhuyenMai"].Value = 0m;
+                if (e.RowIndex >= 0)
+                {
+                    grid.Rows[e.RowIndex].ErrorText = String.Empty;
+                    grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = String.Empty;
+                }
+                UpdateCartTotals();
             };
-            grid.CellValueChanged += delegate { UpdateLineTotal(); };
-            grid.CellEndEdit += delegate { UpdateLineTotal(); };
-            grid.CurrentCellDirtyStateChanged += delegate
-            {
-                if (grid.IsCurrentCellDirty) grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
-            };
-            grid.RowsRemoved += delegate { UpdateTotal(); };
-            grid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e) { e.ThrowException = false; e.Cancel = true; };
-            Load += delegate { LoadLookups(); LoadInvoices(); };
+            grid.SelectionChanged += delegate { UpdateQuantityButtons(); };
+            printDocument.PrintPage += PrintDocument_PrintPage;
+            Load += delegate { LoadLookups(); };
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.F2) { txtTimSach.Focus(); txtTimSach.SelectAll(); return true; }
+            if (keyData == Keys.F9) { SaveInvoice(); return true; }
+            if (keyData == Keys.Escape) { CancelInvoice(); return true; }
+            if (keyData == Keys.Delete && grid.ContainsFocus && !grid.IsCurrentCellInEditMode) { RemoveSelectedBook(); return true; }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void LoadLookups()
         {
             try
             {
-                BindCombo(cboNhanVien, "SELECT MaNV, TenNV FROM NhanVien ORDER BY TenNV", "MaNV", "TenNV");
-                BindCombo(cboKhachHang, "SELECT MaKhach, TenKhach FROM KhachHang ORDER BY TenKhach", "MaKhach", "TenKhach");
-                books = DB.GetTable(@"SELECT s.MaSach,
-    s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach,
-    ISNULL(k.SoLuong, 0) AS TonKho, ISNULL(k.DonGiaBan, 0) AS DonGiaBan
+                BindEmployees();
+                EnsureWalkInCustomer();
+                BindCustomers(null);
+                books = DB.GetTable(@"SELECT s.MaSach, s.TenSach, ISNULL(k.SoLuong, 0) AS TonKho,
+    ISNULL(k.DonGiaBan, 0) AS DonGiaBan
 FROM Sach s LEFT JOIN KhoSach k ON k.MaSach=s.MaSach ORDER BY s.TenSach");
-                colMaSach.DataSource = books;
-                colMaSach.ValueMember = "MaSach";
-                colMaSach.DisplayMember = "TenSach";
+                FilterBooks();
+                dtpNgayBan.Value = DateTime.Today;
+                UpdateQuantityButtons();
             }
             catch (Exception ex) { ShowError(ex); }
         }
 
-        private static void BindCombo(ComboBox combo, string sql, string value, string display)
+        private void BindEmployees()
         {
-            var data = DB.GetTable(sql);
-            combo.DataSource = data;
-            combo.ValueMember = value;
-            combo.DisplayMember = display;
-            combo.SelectedIndex = data.Rows.Count == 0 ? -1 : 0;
+            var data = DB.GetTable("SELECT MaNV, TenNV FROM NhanVien ORDER BY TenNV");
+            cboNhanVien.DataSource = data;
+            cboNhanVien.ValueMember = "MaNV";
+            cboNhanVien.DisplayMember = "TenNV";
+            cboNhanVien.SelectedIndex = -1;
+            if (AppSession.IsAuthenticated)
+                cboNhanVien.SelectedValue = AppSession.EmployeeId;
+            if (cboNhanVien.SelectedIndex < 0 && data.Rows.Count > 0) cboNhanVien.SelectedIndex = 0;
+            cboNhanVien.Enabled = AppSession.Role == AppRole.Manager;
         }
 
-        private void UpdateLineTotal()
+        private void EnsureWalkInCustomer()
         {
-            if (updating) return;
-            updating = true;
-            try
+            DB.Exec(@"IF NOT EXISTS (SELECT 1 FROM dbo.KhachHang WHERE TenKhach=N'Khách lẻ')
+INSERT INTO dbo.KhachHang (TenKhach, DienThoai, DiaChi) VALUES (N'Khách lẻ', NULL, NULL)");
+        }
+
+        private void BindCustomers(int? preferredId)
+        {
+            var data = DB.GetTable("SELECT MaKhach, TenKhach FROM KhachHang ORDER BY TenKhach");
+            cboKhachHang.DataSource = data;
+            cboKhachHang.ValueMember = "MaKhach";
+            cboKhachHang.DisplayMember = "TenKhach";
+            cboKhachHang.SelectedIndex = -1;
+            if (preferredId.HasValue) cboKhachHang.SelectedValue = preferredId.Value;
+            if (cboKhachHang.SelectedIndex < 0)
+                foreach (DataRow row in data.Rows)
+                    if (String.Equals(Convert.ToString(row["TenKhach"]), "Khách lẻ", StringComparison.OrdinalIgnoreCase))
+                    { cboKhachHang.SelectedValue = Convert.ToInt32(row["MaKhach"]); break; }
+            if (cboKhachHang.SelectedIndex < 0 && data.Rows.Count > 0) cboKhachHang.SelectedIndex = 0;
+        }
+
+        private void FilterBooks()
+        {
+            var results = books == null ? null : books.Clone();
+            string query = txtTimSach.Text.Trim();
+            if (books != null && query.Length > 0)
             {
-                foreach (DataGridViewRow row in grid.Rows)
-                {
-                    if (row.IsNewRow) continue;
-                    DataRow selected = null;
-                    if (books != null && row.Cells["MaSach"].Value != null && row.Cells["MaSach"].Value != DBNull.Value)
-                        foreach (DataRow book in books.Rows)
-                            if (Convert.ToInt32(book["MaSach"]) == Convert.ToInt32(row.Cells["MaSach"].Value)) { selected = book; break; }
-                    if (selected != null) row.Cells["DonGiaBan"].Value = selected["DonGiaBan"];
-                    decimal qty, price, discount;
-                    if (ReadDecimal(row.Cells["SLBan"].Value, out qty) && ReadDecimal(row.Cells["DonGiaBan"].Value, out price)
-                        && ReadDecimal(row.Cells["KhuyenMai"].Value, out discount) && qty > 0 && price >= 0 && discount >= 0 && discount <= 100)
-                        row.Cells["ThanhTien"].Value = Math.Round(qty * price * (100m - discount) / 100m, 0, MidpointRounding.AwayFromZero);
-                    else row.Cells["ThanhTien"].Value = null;
-                }
-                UpdateTotal();
+                int id;
+                foreach (DataRow row in books.Rows)
+                    if (Convert.ToString(row["TenSach"]).IndexOf(query, StringComparison.CurrentCultureIgnoreCase) >= 0
+                        || (Int32.TryParse(query, out id) && Convert.ToInt32(row["MaSach"]) == id))
+                        results.ImportRow(row);
             }
-            finally { updating = false; }
+            gridKetQua.DataSource = results;
+            SetSearchGridHeaders();
+            lblTimHint.Text = query.Length == 0 ? "Gõ tên sách hoặc mã sách để lọc; nhấn Enter để thêm." :
+                (results.Rows.Count == 0 ? "Không tìm thấy sách phù hợp." : results.Rows.Count + " kết quả · Enter để thêm sách đầu tiên.");
         }
 
-        private void UpdateTotal()
+        private void SetSearchGridHeaders()
+        {
+            SetHeader(gridKetQua, "MaSach", "Mã");
+            SetHeader(gridKetQua, "TenSach", "Sách");
+            SetHeader(gridKetQua, "DonGiaBan", "Giá bán");
+            SetHeader(gridKetQua, "TonKho", "Tồn");
+            if (gridKetQua.Columns.Contains("DonGiaBan")) gridKetQua.Columns["DonGiaBan"].DefaultCellStyle.Format = "N0";
+        }
+
+        private void Search_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                AddSelectedBook();
+            }
+            else if (e.KeyCode == Keys.Down && gridKetQua.Rows.Count > 0)
+            {
+                gridKetQua.Focus();
+                gridKetQua.CurrentCell = gridKetQua.Rows[0].Cells["TenSach"];
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void AddSelectedBook()
+        {
+            if (gridKetQua.CurrentRow == null || gridKetQua.CurrentRow.IsNewRow)
+            {
+                if (gridKetQua.Rows.Count == 0) return;
+                gridKetQua.CurrentCell = gridKetQua.Rows[0].Cells["TenSach"];
+            }
+            int id = Convert.ToInt32(gridKetQua.CurrentRow.Cells["MaSach"].Value);
+            int stock = Convert.ToInt32(gridKetQua.CurrentRow.Cells["TonKho"].Value);
+            var existing = FindCartRow(id);
+            int current = existing == null ? 0 : Convert.ToInt32(existing.Cells["SLBan"].Value);
+            if (stock <= 0)
+            {
+                ShowStockWarning("Sách này hiện hết hàng.");
+                return;
+            }
+            if (current + 1 > stock)
+            {
+                ShowStockWarning("Tồn kho chỉ còn " + stock + " cuốn; không thể tăng thêm.");
+                return;
+            }
+
+            if (existing != null)
+                existing.Cells["SLBan"].Value = current + 1;
+            else
+            {
+                int rowIndex = grid.Rows.Add();
+                var row = grid.Rows[rowIndex];
+                row.Cells["MaSach"].Value = id;
+                row.Cells["TenSach"].Value = Convert.ToString(gridKetQua.CurrentRow.Cells["TenSach"].Value);
+                row.Cells["SLBan"].Value = 1;
+                row.Cells["TonKho"].Value = stock;
+                row.Cells["DonGiaBan"].Value = Convert.ToDecimal(gridKetQua.CurrentRow.Cells["DonGiaBan"].Value);
+                row.Cells["KhuyenMai"].Value = 0m;
+            }
+            UpdateCartTotals();
+            lblCanhBao.Text = "";
+            txtTimSach.Clear();
+            txtTimSach.Focus();
+        }
+
+        private DataGridViewRow FindCartRow(int maSach)
+        {
+            foreach (DataGridViewRow row in grid.Rows)
+                if (!row.IsNewRow && row.Cells["MaSach"].Value != null && Convert.ToInt32(row.Cells["MaSach"].Value) == maSach) return row;
+            return null;
+        }
+
+        private void ValidateCartCell(object sender, DataGridViewCellValidatingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            var row = grid.Rows[e.RowIndex];
+            if (row.IsNewRow) return;
+            string column = grid.Columns[e.ColumnIndex].Name;
+            decimal value;
+            if (column == "SLBan")
+            {
+                int quantity;
+                if (!Int32.TryParse(Convert.ToString(e.FormattedValue), out quantity) || quantity < 1)
+                {
+                    RejectCell(row, e.ColumnIndex, e, "Số lượng phải là số nguyên dương.");
+                    return;
+                }
+                int stock = Convert.ToInt32(row.Cells["TonKho"].Value);
+                if (quantity > stock)
+                {
+                    RejectCell(row, e.ColumnIndex, e, "Tồn kho chỉ còn " + stock + " cuốn.");
+                    return;
+                }
+            }
+            else if (column == "KhuyenMai")
+            {
+                if (!ReadDecimal(e.FormattedValue, out value) || value < 0 || value > 100)
+                {
+                    RejectCell(row, e.ColumnIndex, e, "Mức giảm phải nằm trong khoảng 0–100%.");
+                    return;
+                }
+            }
+            row.Cells[e.ColumnIndex].ErrorText = String.Empty;
+            row.ErrorText = String.Empty;
+            lblCanhBao.Text = "";
+        }
+
+        private void RejectCell(DataGridViewRow row, int columnIndex, DataGridViewCellValidatingEventArgs e, string message)
+        {
+            e.Cancel = true;
+            row.Cells[columnIndex].ErrorText = message;
+            row.ErrorText = message;
+            ShowStockWarning(message);
+        }
+
+        private void UpdateCartTotals()
         {
             decimal total = 0m;
+            int bookCount = 0;
             foreach (DataGridViewRow row in grid.Rows)
             {
-                decimal amount;
-                if (!row.IsNewRow && ReadDecimal(row.Cells["ThanhTien"].Value, out amount)) total += amount;
+                if (row.IsNewRow) continue;
+                decimal quantity, price, discount;
+                if (ReadDecimal(row.Cells["SLBan"].Value, out quantity)
+                    && ReadDecimal(row.Cells["DonGiaBan"].Value, out price)
+                    && ReadDecimal(row.Cells["KhuyenMai"].Value, out discount)
+                    && quantity > 0 && price >= 0 && discount >= 0 && discount <= 100)
+                {
+                    decimal amount = Math.Round(quantity * price * (100m - discount) / 100m, 0, MidpointRounding.AwayFromZero);
+                    row.Cells["ThanhTien"].Value = amount;
+                    total += amount;
+                    bookCount += (int)quantity;
+                    int stock = Convert.ToInt32(row.Cells["TonKho"].Value);
+                    if (quantity > stock) row.DefaultCellStyle.BackColor = Color.MistyRose;
+                    else row.DefaultCellStyle.BackColor = Color.White;
+                }
+                else row.Cells["ThanhTien"].Value = null;
             }
-            lblTongTien.Text = "Tổng tiền dự kiến: " + total.ToString("N0") + " đ";
+            lblTongTien.Text = "Tổng cộng (" + bookCount + " cuốn)  " + total.ToString("N0") + " đ";
+            UpdateQuantityButtons();
+        }
+
+        private void ChangeSelectedQuantity(int delta)
+        {
+            var row = grid.CurrentRow;
+            if (row == null || row.IsNewRow) return;
+            int quantity = Convert.ToInt32(row.Cells["SLBan"].Value);
+            int newQuantity = quantity + delta;
+            int stock = Convert.ToInt32(row.Cells["TonKho"].Value);
+            if (newQuantity < 1) return;
+            if (newQuantity > stock)
+            {
+                ShowStockWarning("Tồn kho chỉ còn " + stock + " cuốn.");
+                return;
+            }
+            row.Cells["SLBan"].Value = newQuantity;
+            lblCanhBao.Text = "";
+        }
+
+        private void RemoveSelectedBook()
+        {
+            if (grid.CurrentRow == null || grid.CurrentRow.IsNewRow) return;
+            grid.Rows.Remove(grid.CurrentRow);
+            UpdateCartTotals();
+        }
+
+        private void UpdateQuantityButtons()
+        {
+            bool hasRow = grid.CurrentRow != null && !grid.CurrentRow.IsNewRow;
+            btnGiam.Enabled = hasRow;
+            btnTang.Enabled = hasRow;
+            btnXoaDong.Enabled = hasRow;
+        }
+
+        private void ShowStockWarning(string message)
+        {
+            lblCanhBao.Text = message;
+            lblCanhBao.ForeColor = Color.Firebrick;
         }
 
         private void SaveInvoice()
         {
             try
             {
-                grid.EndEdit();
-                UpdateLineTotal();
+                if (grid.IsCurrentCellInEditMode && !grid.EndEdit()) return;
+                if (!String.IsNullOrEmpty(lblCanhBao.Text)) throw new InvalidOperationException(lblCanhBao.Text);
                 if (cboNhanVien.SelectedValue == null || cboKhachHang.SelectedValue == null)
                     throw new InvalidOperationException("Cần có nhân viên và khách hàng trước khi lập hóa đơn.");
                 var lines = new System.Collections.Generic.List<SaleLine>();
-                var uniqueBooks = new System.Collections.Generic.HashSet<int>();
                 foreach (DataGridViewRow row in grid.Rows)
                 {
                     if (row.IsNewRow) continue;
-                    if (row.Cells["MaSach"].Value == null || row.Cells["MaSach"].Value == DBNull.Value)
-                        throw new InvalidOperationException("Hãy chọn sách cho từng dòng chi tiết.");
                     int id = Convert.ToInt32(row.Cells["MaSach"].Value);
-                    if (!uniqueBooks.Add(id)) throw new InvalidOperationException("Mỗi sách chỉ được xuất hiện một lần trong hóa đơn.");
-                    decimal qty, discount;
-                    if (!ReadDecimal(row.Cells["SLBan"].Value, out qty) || qty <= 0 || qty != decimal.Truncate(qty))
-                        throw new InvalidOperationException("Số lượng bán phải là số nguyên lớn hơn 0.");
-                    if (!ReadDecimal(row.Cells["KhuyenMai"].Value, out discount) || discount < 0 || discount > 100)
-                        throw new InvalidOperationException("Chiết khấu phải từ 0 đến 100%.");
-                    lines.Add(new SaleLine { MaSach = id, SoLuong = (int)qty, KhuyenMai = discount });
+                    int quantity = Convert.ToInt32(row.Cells["SLBan"].Value);
+                    int stock = Convert.ToInt32(row.Cells["TonKho"].Value);
+                    decimal discount = Convert.ToDecimal(row.Cells["KhuyenMai"].Value);
+                    if (quantity < 1 || quantity > stock) throw new InvalidOperationException("Tồn kho không đủ cho sách " + row.Cells["TenSach"].Value + ".");
+                    if (discount < 0 || discount > 100) throw new InvalidOperationException("Mức giảm phải nằm trong khoảng 0–100%.");
+                    lines.Add(new SaleLine { MaSach = id, SoLuong = quantity, KhuyenMai = discount });
                 }
-                if (lines.Count == 0) throw new InvalidOperationException("Hãy nhập ít nhất một dòng chi tiết.");
+                if (lines.Count == 0) throw new InvalidOperationException("Hãy thêm ít nhất một cuốn sách vào giỏ.");
                 int soHDB = SaveSaleTransaction(lines);
-                MessageBox.Show(this, "Đã lưu hóa đơn bán số " + soHDB + ". Tổng tiền được cơ sở dữ liệu tự cập nhật.", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                ClearInvoice();
+                lastSavedInvoiceId = soHDB;
+                btnIn.Enabled = true;
+                MessageBox.Show(this, "Đã lưu hóa đơn bán số " + soHDB + ". Tổng tiền do cơ sở dữ liệu tự tính.", Text,
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ClearCart();
                 LoadLookups();
-                LoadInvoices();
-                tabs.SelectedTab = tabLichSu;
+                btnIn.Focus();
             }
             catch (SqlException ex) when (ex.Message.IndexOf("Số lượng tồn kho không đủ", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                MessageBox.Show(this, "Số lượng tồn kho không đủ để bán sách đã chọn.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowStockWarning("Số lượng tồn kho không đủ; tồn kho có thể vừa thay đổi. Cập nhật lại số lượng rồi thử lại.");
             }
             catch (Exception ex) { ShowError(ex); }
         }
@@ -184,69 +391,131 @@ OUTPUT INSERTED.SoHDB VALUES (@MaNV, @MaKhach, @NgayBan);", connection, transact
             }
         }
 
-        private void LoadInvoices()
+        private void CancelInvoice()
         {
-            try
-            {
-                var data = DB.GetTable(@"SELECT h.SoHDB,
-    CONVERT(NVARCHAR(20), h.SoHDB) + N' - ' + CONVERT(NVARCHAR(10), h.NgayBan, 103) + N' - ' + kh.TenKhach AS MoTa
-FROM HoaDonBan h JOIN KhachHang kh ON kh.MaKhach=h.MaKhach ORDER BY h.SoHDB DESC");
-                cboHoaDon.DataSource = data;
-                cboHoaDon.ValueMember = "SoHDB";
-                cboHoaDon.DisplayMember = "MoTa";
-                cboHoaDon.SelectedIndex = data.Rows.Count == 0 ? -1 : 0;
-                LoadInvoiceDetails();
-            }
-            catch (Exception ex) { ShowError(ex); }
-        }
-
-        private void LoadInvoiceDetails()
-        {
-            try
-            {
-                if (cboHoaDon.SelectedValue == null || cboHoaDon.SelectedValue is DataRowView) { gridChiTiet.DataSource = null; return; }
-                gridChiTiet.DataSource = DB.GetTable(@"SELECT c.SoHDB, c.MaSach, s.TenSach, c.SLBan, c.DonGiaBan, c.KhuyenMai, c.ThanhTien
-FROM ChiTietHDB c JOIN Sach s ON s.MaSach=c.MaSach WHERE c.SoHDB=@SoHDB ORDER BY s.TenSach",
-                    new SqlParameter("@SoHDB", SqlDbType.Int) { Value = Convert.ToInt32(cboHoaDon.SelectedValue) });
-                if (gridChiTiet.Columns.Contains("SoHDB")) gridChiTiet.Columns["SoHDB"].Visible = false;
-                if (gridChiTiet.Columns.Contains("MaSach")) gridChiTiet.Columns["MaSach"].Visible = false;
-                if (gridChiTiet.Columns.Contains("TenSach")) gridChiTiet.Columns["TenSach"].HeaderText = "Sách";
-                if (gridChiTiet.Columns.Contains("SLBan")) gridChiTiet.Columns["SLBan"].HeaderText = "Số lượng";
-                if (gridChiTiet.Columns.Contains("DonGiaBan")) { gridChiTiet.Columns["DonGiaBan"].HeaderText = "Đơn giá"; gridChiTiet.Columns["DonGiaBan"].DefaultCellStyle.Format = "N0"; }
-                if (gridChiTiet.Columns.Contains("KhuyenMai")) gridChiTiet.Columns["KhuyenMai"].HeaderText = "Giảm (%)";
-                if (gridChiTiet.Columns.Contains("ThanhTien")) { gridChiTiet.Columns["ThanhTien"].HeaderText = "Thành tiền"; gridChiTiet.Columns["ThanhTien"].DefaultCellStyle.Format = "N0"; }
-            }
-            catch (Exception ex) { ShowError(ex); }
-        }
-
-        private void DeleteSelectedDetail()
-        {
-            if (gridChiTiet.CurrentRow == null || cboHoaDon.SelectedValue == null || cboHoaDon.SelectedValue is DataRowView) return;
-            if (MessageBox.Show(this, "Xóa sách khỏi hóa đơn này? Trigger cơ sở dữ liệu sẽ hoàn tồn kho.", Text,
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
-            try
-            {
-                using (var connection = new SqlConnection(DB.ConnStr))
-                using (var command = new SqlCommand("DELETE FROM ChiTietHDB WHERE SoHDB=@SoHDB AND MaSach=@MaSach", connection))
-                {
-                    command.Parameters.Add("@SoHDB", SqlDbType.Int).Value = Convert.ToInt32(cboHoaDon.SelectedValue);
-                    command.Parameters.Add("@MaSach", SqlDbType.Int).Value = Convert.ToInt32(gridChiTiet.CurrentRow.Cells["MaSach"].Value);
-                    connection.Open();
-                    command.ExecuteNonQuery();
-                }
-                LoadInvoiceDetails();
-                LoadLookups();
-            }
-            catch (Exception ex) { ShowError(ex); }
-        }
-
-        private void ClearInvoice()
-        {
-            for (int i = grid.Rows.Count - 1; i >= 0; i--) if (!grid.Rows[i].IsNewRow) grid.Rows.RemoveAt(i);
-            if (cboNhanVien.Items.Count > 0) cboNhanVien.SelectedIndex = 0;
-            if (cboKhachHang.Items.Count > 0) cboKhachHang.SelectedIndex = 0;
+            if (grid.Rows.Count > 0 && MessageBox.Show(this, "Hủy hóa đơn đang nhập và xóa giỏ hàng?", Text,
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            ClearCart();
+            txtTimSach.Clear();
             dtpNgayBan.Value = DateTime.Today;
-            UpdateTotal();
+            BindEmployees();
+            BindCustomers(null);
+            lblCanhBao.Text = "";
+        }
+
+        private void ClearCart()
+        {
+            grid.Rows.Clear();
+            UpdateCartTotals();
+        }
+
+        private void AddCustomerQuickly()
+        {
+            using (var dialog = new Form { Text = "Thêm nhanh khách hàng", ClientSize = new Size(430, 270), StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Font = new Font("Segoe UI", 9F) })
+            {
+                var lblName = new Label { Text = "Tên khách hàng *", Left = 22, Top = 22, Width = 360 };
+                var txtName = new TextBox { Left = 22, Top = 46, Width = 380, MaxLength = 100 };
+                var lblPhone = new Label { Text = "Điện thoại", Left = 22, Top = 84, Width = 360 };
+                var txtPhone = new TextBox { Left = 22, Top = 108, Width = 380, MaxLength = 15 };
+                var lblAddress = new Label { Text = "Địa chỉ", Left = 22, Top = 146, Width = 360 };
+                var txtAddress = new TextBox { Left = 22, Top = 170, Width = 380, MaxLength = 200 };
+                var btnSave = new Button { Text = "Thêm khách", Left = 214, Top = 218, Width = 100, DialogResult = DialogResult.None };
+                var btnCancel = new Button { Text = "Hủy", Left = 324, Top = 218, Width = 78, DialogResult = DialogResult.Cancel };
+                dialog.Controls.AddRange(new Control[] { lblName, txtName, lblPhone, txtPhone, lblAddress, txtAddress, btnSave, btnCancel });
+                dialog.AcceptButton = btnSave;
+                dialog.CancelButton = btnCancel;
+                int? createdId = null;
+                btnSave.Click += delegate
+                {
+                    if (String.IsNullOrWhiteSpace(txtName.Text))
+                    {
+                        MessageBox.Show(dialog, "Nhập tên khách hàng.", dialog.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtName.Focus();
+                        return;
+                    }
+                    try
+                    {
+                        using (var connection = new SqlConnection(DB.ConnStr))
+                        using (var command = new SqlCommand(@"INSERT INTO KhachHang (TenKhach, DienThoai, DiaChi)
+OUTPUT INSERTED.MaKhach VALUES (@TenKhach, @DienThoai, @DiaChi)", connection))
+                        {
+                            command.Parameters.Add("@TenKhach", SqlDbType.NVarChar, 100).Value = txtName.Text.Trim();
+                            command.Parameters.Add("@DienThoai", SqlDbType.VarChar, 15).Value = String.IsNullOrWhiteSpace(txtPhone.Text) ? (object)DBNull.Value : txtPhone.Text.Trim();
+                            command.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 200).Value = String.IsNullOrWhiteSpace(txtAddress.Text) ? (object)DBNull.Value : txtAddress.Text.Trim();
+                            connection.Open();
+                            createdId = Convert.ToInt32(command.ExecuteScalar());
+                        }
+                        dialog.DialogResult = DialogResult.OK;
+                        dialog.Close();
+                    }
+                    catch (Exception ex) { MessageBox.Show(dialog, ex.Message, "Không thể thêm khách hàng", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                };
+                if (dialog.ShowDialog(this) == DialogResult.OK && createdId.HasValue) BindCustomers(createdId.Value);
+            }
+        }
+
+        private void PrintLastInvoice()
+        {
+            if (!lastSavedInvoiceId.HasValue) return;
+            try
+            {
+                invoiceToPrint = DB.GetTable(@"SELECT h.SoHDB, h.NgayBan, h.TongTien, kh.TenKhach, nv.TenNV,
+    s.TenSach, c.SLBan, c.DonGiaBan, c.KhuyenMai, c.ThanhTien
+FROM HoaDonBan h JOIN KhachHang kh ON kh.MaKhach=h.MaKhach
+JOIN NhanVien nv ON nv.MaNV=h.MaNV
+JOIN ChiTietHDB c ON c.SoHDB=h.SoHDB JOIN Sach s ON s.MaSach=c.MaSach
+WHERE h.SoHDB=@SoHDB ORDER BY s.TenSach",
+                    new SqlParameter("@SoHDB", SqlDbType.Int) { Value = lastSavedInvoiceId.Value });
+                if (invoiceToPrint.Rows.Count == 0) throw new InvalidOperationException("Không tìm thấy chi tiết hóa đơn để in.");
+                printRowIndex = 0;
+                using (var preview = new PrintPreviewDialog { Document = printDocument, Width = 1000, Height = 750, UseAntiAlias = true })
+                    preview.ShowDialog(this);
+            }
+            catch (Exception ex) { ShowError(ex); }
+        }
+
+        private void PrintDocument_PrintPage(object sender, PrintPageEventArgs e)
+        {
+            if (invoiceToPrint == null || invoiceToPrint.Rows.Count == 0) { e.HasMorePages = false; return; }
+            DataRow first = invoiceToPrint.Rows[0];
+            using (var titleFont = new Font("Segoe UI", 17F, FontStyle.Bold))
+            using (var bodyFont = new Font("Segoe UI", 10F))
+            using (var boldFont = new Font("Segoe UI", 10F, FontStyle.Bold))
+            using (var brush = new SolidBrush(Color.Black))
+            {
+                float y = e.MarginBounds.Top;
+                e.Graphics.DrawString("HÓA ĐƠN BÁN HÀNG", titleFont, brush, e.MarginBounds.Left, y); y += 38;
+                e.Graphics.DrawString("Số: " + first["SoHDB"] + "     Ngày: " + Convert.ToDateTime(first["NgayBan"]).ToString("dd/MM/yyyy"), bodyFont, brush, e.MarginBounds.Left, y); y += 24;
+                e.Graphics.DrawString("Khách hàng: " + first["TenKhach"], bodyFont, brush, e.MarginBounds.Left, y); y += 22;
+                e.Graphics.DrawString("Thu ngân: " + first["TenNV"], bodyFont, brush, e.MarginBounds.Left, y); y += 32;
+                e.Graphics.DrawString("Sách", boldFont, brush, e.MarginBounds.Left, y);
+                e.Graphics.DrawString("SL", boldFont, brush, e.MarginBounds.Left + 310, y);
+                e.Graphics.DrawString("Đơn giá", boldFont, brush, e.MarginBounds.Left + 365, y);
+                e.Graphics.DrawString("Thành tiền", boldFont, brush, e.MarginBounds.Left + 480, y); y += 24;
+                while (printRowIndex < invoiceToPrint.Rows.Count && y < e.MarginBounds.Bottom - 65)
+                {
+                    DataRow row = invoiceToPrint.Rows[printRowIndex++];
+                    string name = Convert.ToString(row["TenSach"]);
+                    if (name.Length > 42) name = name.Substring(0, 39) + "...";
+                    e.Graphics.DrawString(name, bodyFont, brush, e.MarginBounds.Left, y);
+                    e.Graphics.DrawString(Convert.ToString(row["SLBan"]), bodyFont, brush, e.MarginBounds.Left + 310, y);
+                    e.Graphics.DrawString(Convert.ToDecimal(row["DonGiaBan"]).ToString("N0"), bodyFont, brush, e.MarginBounds.Left + 365, y);
+                    e.Graphics.DrawString(Convert.ToDecimal(row["ThanhTien"]).ToString("N0"), bodyFont, brush, e.MarginBounds.Left + 480, y);
+                    y += 22;
+                }
+                if (printRowIndex < invoiceToPrint.Rows.Count) { e.HasMorePages = true; return; }
+                y += 12;
+                e.Graphics.DrawString("TỔNG TIỀN: " + Convert.ToDecimal(first["TongTien"]).ToString("N0") + " đ", boldFont, brush, e.MarginBounds.Left + 350, y);
+                y += 30;
+                e.Graphics.DrawString("Cảm ơn quý khách!", bodyFont, brush, e.MarginBounds.Left, y);
+                e.HasMorePages = false;
+            }
+        }
+
+        private static void SetHeader(DataGridView view, string column, string caption)
+        {
+            if (view.Columns.Contains(column)) view.Columns[column].HeaderText = caption;
         }
 
         private static bool ReadDecimal(object value, out decimal result)
