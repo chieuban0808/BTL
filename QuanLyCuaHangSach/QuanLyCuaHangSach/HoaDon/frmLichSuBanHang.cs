@@ -1,11 +1,7 @@
 using System;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Xml;
 using System.Windows.Forms;
 
 namespace QuanLyCuaHangSach
@@ -86,9 +82,9 @@ FROM ChiTietHDB c JOIN Sach s ON s.MaSach=c.MaSach WHERE c.SoHDB=@SoHDB ORDER BY
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
                 dialog.Title = "Xuất lịch sử bán hàng";
-                dialog.Filter = "Excel 97-2003 (*.xls)|*.xls|Tệp CSV mở bằng Excel (*.csv)|*.csv";
-                dialog.FileName = "LichSuBanHang_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xls";
-                dialog.DefaultExt = "xls";
+                dialog.Filter = "Excel Workbook (*.xlsx)|*.xlsx|Tệp CSV mở bằng Excel (*.csv)|*.csv";
+                dialog.FileName = "LichSuBanHang_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx";
+                dialog.DefaultExt = "xlsx";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 try
                 {
@@ -98,67 +94,15 @@ FROM HoaDonBan h JOIN KhachHang kh ON kh.MaKhach=h.MaKhach
 JOIN NhanVien nv ON nv.MaNV=h.MaNV
 JOIN ChiTietHDB c ON c.SoHDB=h.SoHDB JOIN Sach s ON s.MaSach=c.MaSach
 ORDER BY h.NgayBan DESC, h.SoHDB DESC, s.TenSach");
-                    if (dialog.FilterIndex == 2 || Path.GetExtension(dialog.FileName).Equals(".csv", StringComparison.OrdinalIgnoreCase))
-                        WriteCsv(rows, dialog.FileName);
-                    else
-                        WriteExcelXml(rows, dialog.FileName);
+                    ExcelReportExporter.Export(rows, "LỊCH SỬ BÁN HÀNG",
+                        new[] { "Số hóa đơn", "Ngày bán", "Khách hàng", "Thu ngân", "Mã sách", "Tên sách", "Số lượng", "Đơn giá", "Giảm (%)", "Thành tiền", "Tổng hóa đơn" },
+                        new[] { "SoHDB", "NgayBan", "TenKhach", "TenNV", "MaSach", "TenSach", "SLBan", "DonGiaBan", "KhuyenMai", "ThanhTien", "TongTien" },
+                        "SoHDB", "TongTien", "NgayBan", dialog.FileName);
                     MessageBox.Show(this, "Đã xuất " + rows.Rows.Count + " dòng chi tiết hóa đơn.", "Xuất Excel", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
-                catch (Exception ex) { ShowError(ex); }
+                catch (Exception ex) { MessageBox.Show(this, ex.Message, "Xuất Excel thất bại", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
         }
-        private static void WriteExcelXml(DataTable rows, string path)
-        {
-            string[] headers = { "Số hóa đơn", "Ngày bán", "Khách hàng", "Thu ngân", "Mã sách", "Tên sách", "Số lượng", "Đơn giá", "Giảm (%)", "Thành tiền", "Tổng hóa đơn" };
-            string[] columns = { "SoHDB", "NgayBan", "TenKhach", "TenNV", "MaSach", "TenSach", "SLBan", "DonGiaBan", "KhuyenMai", "ThanhTien", "TongTien" };
-            using (XmlWriter writer = XmlWriter.Create(path, new XmlWriterSettings { Encoding = new UTF8Encoding(true), Indent = true }))
-            {
-                const string ss = "urn:schemas-microsoft-com:office:spreadsheet";
-                writer.WriteStartDocument(); writer.WriteStartElement("Workbook", ss);
-                writer.WriteAttributeString("xmlns", "ss", null, ss);
-                writer.WriteStartElement("Worksheet", ss); writer.WriteAttributeString("ss", "Name", ss, "LichSuBanHang");
-                writer.WriteStartElement("Table", ss);
-                WriteExcelRow(writer, ss, headers, null);
-                foreach (DataRow row in rows.Rows) WriteExcelRow(writer, ss, columns, row);
-                writer.WriteEndElement(); writer.WriteEndElement(); writer.WriteEndElement(); writer.WriteEndDocument();
-            }
-        }
-        private static void WriteExcelRow(XmlWriter writer, string ns, string[] values, DataRow dataRow)
-        {
-            writer.WriteStartElement("Row", ns);
-            foreach (string value in values)
-            {
-                writer.WriteStartElement("Cell", ns); writer.WriteStartElement("Data", ns);
-                bool numeric = dataRow != null && new[] { "SoHDB", "MaSach", "SLBan", "DonGiaBan", "KhuyenMai", "ThanhTien", "TongTien" }.Contains(value);
-                if (value == "NgayBan")
-                {
-                    writer.WriteAttributeString("ss", "Type", "urn:schemas-microsoft-com:office:spreadsheet", "DateTime");
-                    DateTime date = Convert.ToDateTime(dataRow[value]); writer.WriteString(date.ToString("yyyy-MM-ddT00:00:00", CultureInfo.InvariantCulture));
-                }
-                else
-                {
-                    writer.WriteAttributeString("ss", "Type", "urn:schemas-microsoft-com:office:spreadsheet", numeric ? "Number" : "String");
-                    writer.WriteString(dataRow == null ? value : Convert.ToString(dataRow[value], CultureInfo.CurrentCulture));
-                }
-                writer.WriteEndElement(); writer.WriteEndElement();
-            }
-            writer.WriteEndElement();
-        }
-        private static void WriteCsv(DataTable rows, string path)
-        {
-            string[] headers = { "Số hóa đơn", "Ngày bán", "Khách hàng", "Thu ngân", "Mã sách", "Tên sách", "Số lượng", "Đơn giá", "Giảm (%)", "Thành tiền", "Tổng hóa đơn" };
-            string[] columns = { "SoHDB", "NgayBan", "TenKhach", "TenNV", "MaSach", "TenSach", "SLBan", "DonGiaBan", "KhuyenMai", "ThanhTien", "TongTien" };
-            using (StreamWriter writer = new StreamWriter(path, false, new UTF8Encoding(true)))
-            {
-                writer.WriteLine(string.Join(",", Array.ConvertAll(headers, CsvEscape)));
-                foreach (DataRow row in rows.Rows)
-                {
-                    string[] values = Array.ConvertAll(columns, c => c == "NgayBan" ? Convert.ToDateTime(row[c]).ToString("dd/MM/yyyy") : Convert.ToString(row[c], CultureInfo.CurrentCulture));
-                    writer.WriteLine(string.Join(",", Array.ConvertAll(values, CsvEscape)));
-                }
-            }
-        }
-        private static string CsvEscape(string value) { return "\"" + (value ?? "").Replace("\"", "\"\"") + "\""; }
         private static void SetHeader(DataGridView grid, string column, string header)
         { if (grid.Columns.Contains(column)) grid.Columns[column].HeaderText = header; }
         private void ShowError(Exception ex)

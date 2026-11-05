@@ -40,6 +40,8 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http" />
@@ -49,6 +51,7 @@
   <ItemGroup>
     <Compile Include="Classes\DB.cs" />
     <Compile Include="Classes\AppSession.cs" />
+    <Compile Include="Classes\ExcelReportExporter.cs" />
     <Compile Include="DanhMuc\CatalogForms.cs" />
     <Compile Include="DanhMuc\CatalogFormBase.Designer.cs">
       <DependentUpon>CatalogForms.cs</DependentUpon>
@@ -114,6 +117,9 @@
       <DependentUpon>frmCongViec.cs</DependentUpon>
     </Compile>
     <Compile Include="HoaDon\frmNhapHang.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HoaDon\frmLichSuNhapHang.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="HoaDon\frmBanHang.cs">

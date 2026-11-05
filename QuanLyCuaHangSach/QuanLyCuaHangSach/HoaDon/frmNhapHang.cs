@@ -14,6 +14,8 @@ namespace QuanLyCuaHangSach
     {
         private DataTable sachData;
         private bool recalculating;
+        private bool isSaving;
+        private bool loadingLookups;
 
         public frmNhapHang()
         {
@@ -23,6 +25,10 @@ namespace QuanLyCuaHangSach
             ConfigureGrid();
             btnLuu.Click += delegate { SaveInvoice(); };
             btnLamMoi.Click += delegate { ClearInvoice(); };
+            btnThemNCC.Click += delegate { AddSupplierQuick(); };
+            btnThemSach.Click += delegate { AddBookQuick(); };
+            btnLichSu.Click += delegate { using (var form = new frmLichSuNhapHang()) form.ShowDialog(this); };
+            cboNhaCungCap.SelectedValueChanged += delegate { if (!loadingLookups) LoadBookSuggestions(); };
 
             Load += delegate { LoadLookups(); };
         }
@@ -51,6 +57,7 @@ namespace QuanLyCuaHangSach
 
         private void LoadLookups()
         {
+            loadingLookups = true;
             try
             {
                 var employees = DB.GetTable("SELECT MaNV, TenNV FROM NhanVien ORDER BY TenNV");
@@ -65,16 +72,59 @@ namespace QuanLyCuaHangSach
                 cboNhaCungCap.DisplayMember = "TenNCC";
                 cboNhaCungCap.SelectedIndex = suppliers.Rows.Count > 0 ? 0 : -1;
 
-                sachData = DB.GetTable(@"SELECT s.MaSach,
-    s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach
-FROM Sach s LEFT JOIN KhoSach k ON k.MaSach = s.MaSach
-ORDER BY s.TenSach");
-                var bookColumn = (DataGridViewComboBoxColumn)grid.Columns["MaSach"];
-                bookColumn.DataSource = sachData;
-                bookColumn.ValueMember = "MaSach";
-                bookColumn.DisplayMember = "TenSach";
             }
             catch (Exception ex) { ShowError(ex); }
+            finally { loadingLookups = false; }
+            LoadBookSuggestions();
+        }
+
+        private void LoadBookSuggestions(int? additionalBookId = null)
+        {
+            try
+            {
+                DataTable allBooks = DB.GetTable(@"SELECT s.MaSach,
+    s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach
+FROM Sach s LEFT JOIN KhoSach k ON k.MaSach = s.MaSach ORDER BY s.TenSach");
+                DataTable suggested = allBooks;
+                int supplierId;
+                if (cboNhaCungCap.SelectedValue != null && cboNhaCungCap.SelectedValue != DBNull.Value &&
+                    Int32.TryParse(Convert.ToString(cboNhaCungCap.SelectedValue), out supplierId))
+                {
+                    DataTable fromSupplier = DB.GetTable(@"SELECT DISTINCT s.MaSach,
+    s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach
+FROM Sach s LEFT JOIN KhoSach k ON k.MaSach=s.MaSach
+JOIN ChiTietHDN c ON c.MaSach=s.MaSach JOIN HoaDonNhap h ON h.SoHDN=c.SoHDN
+WHERE h.MaNCC=@MaNCC ORDER BY s.TenSach", new SqlParameter("@MaNCC", SqlDbType.Int) { Value = supplierId });
+                    if (fromSupplier.Rows.Count > 0)
+                    {
+                        suggested = fromSupplier;
+                        var included = new HashSet<int>();
+                        foreach (DataRow row in suggested.Rows) included.Add(Convert.ToInt32(row["MaSach"]));
+                        foreach (DataGridViewRow row in grid.Rows)
+                        {
+                            if (row.IsNewRow || row.Cells["MaSach"].Value == null || row.Cells["MaSach"].Value == DBNull.Value) continue;
+                            int currentId = Convert.ToInt32(row.Cells["MaSach"].Value);
+                            if (included.Add(currentId)) ImportBook(allBooks, suggested, currentId);
+                        }
+                    }
+                }
+                if (additionalBookId.HasValue && !ContainsBook(suggested, additionalBookId.Value)) ImportBook(allBooks, suggested, additionalBookId.Value);
+                var bookColumn = (DataGridViewComboBoxColumn)grid.Columns["MaSach"];
+                bookColumn.DataSource = suggested;
+                bookColumn.ValueMember = "MaSach";
+                bookColumn.DisplayMember = "TenSach";
+                sachData = suggested;
+            }
+            catch (Exception ex) { ShowError(ex); }
+        }
+
+        private static bool ContainsBook(DataTable table, int id)
+        { foreach (DataRow row in table.Rows) if (Convert.ToInt32(row["MaSach"]) == id) return true; return false; }
+
+        private static void ImportBook(DataTable source, DataTable destination, int id)
+        {
+            foreach (DataRow row in source.Rows)
+                if (Convert.ToInt32(row["MaSach"]) == id) { destination.ImportRow(row); return; }
         }
 
         private void RecalculateTotals()
@@ -123,6 +173,9 @@ ORDER BY s.TenSach");
 
         private void SaveInvoice()
         {
+            if (isSaving) return;
+            isSaving = true;
+            btnLuu.Enabled = false;
             try
             {
                 grid.EndEdit();
@@ -157,10 +210,66 @@ ORDER BY s.TenSach");
                 decimal displayTotal = lines.Sum(line => Math.Round(line.SoLuong * line.DonGia * (100m - line.KhuyenMai) / 100m, 0, MidpointRounding.AwayFromZero));
                 MessageBox.Show(this, "Đã lưu hóa đơn nhập số " + soHDN + ".\r\nTổng tiền: " + displayTotal.ToString("N0") + " đ", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearInvoice();
-                LoadLookups();
+                grid.Focus();
+                if (grid.Rows.Count > 0) grid.CurrentCell = grid.Rows[grid.Rows.Count - 1].Cells["MaSach"];
             }
             catch (Exception ex) { ShowError(ex); }
+            finally { isSaving = false; btnLuu.Enabled = true; }
         }
+
+        private void AddSupplierQuick()
+        {
+            using (var dialog = new QuickEntryDialog("Thêm nhà cung cấp", "Tên nhà cung cấp", "Địa chỉ", "Điện thoại"))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                try
+                {
+                    int id = Convert.ToInt32(DB.Scalar(@"INSERT INTO NhaCungCap (TenNCC, DiaChi, DienThoai)
+OUTPUT INSERTED.MaNCC VALUES (@Ten, @DiaChi, @DienThoai)",
+                        new SqlParameter("@Ten", SqlDbType.NVarChar, 150) { Value = dialog.Value1 },
+                        new SqlParameter("@DiaChi", SqlDbType.NVarChar, 200) { Value = DbText(dialog.Value2) },
+                        new SqlParameter("@DienThoai", SqlDbType.VarChar, 15) { Value = DbText(dialog.Value3) }));
+                    LoadSupplierLookup(id);
+                }
+                catch (Exception ex) { ShowError(ex); }
+            }
+        }
+
+        private void LoadSupplierLookup(int selectedId)
+        {
+            var suppliers = DB.GetTable("SELECT MaNCC, TenNCC FROM NhaCungCap ORDER BY TenNCC");
+            loadingLookups = true;
+            try { cboNhaCungCap.DataSource = suppliers; cboNhaCungCap.ValueMember = "MaNCC"; cboNhaCungCap.DisplayMember = "TenNCC"; cboNhaCungCap.SelectedValue = selectedId; }
+            finally { loadingLookups = false; }
+            LoadBookSuggestions();
+        }
+
+        private void AddBookQuick()
+        {
+            var categories = DB.GetTable("SELECT MaLoai, TenLoai FROM LoaiSach ORDER BY TenLoai");
+            if (categories.Rows.Count == 0) { MessageBox.Show(this, "Hãy thêm ít nhất một loại sách trước.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            using (var dialog = new QuickBookDialog(categories))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                try
+                {
+                    int id = Convert.ToInt32(DB.Scalar(@"INSERT INTO Sach (TenSach, MaLoai) OUTPUT INSERTED.MaSach VALUES (@TenSach, @MaLoai)",
+                        new SqlParameter("@TenSach", SqlDbType.NVarChar, 200) { Value = dialog.BookTitle },
+                        new SqlParameter("@MaLoai", SqlDbType.Int) { Value = dialog.CategoryId }));
+                    LoadBookSuggestions(id);
+                    int rowIndex = grid.Rows.Add();
+                    grid.Rows[rowIndex].Cells["MaSach"].Value = id;
+                    grid.Rows[rowIndex].Cells["SLNhap"].Value = 1;
+                    grid.Rows[rowIndex].Cells["DonGiaNhap"].Value = 0m;
+                    grid.Rows[rowIndex].Cells["KhuyenMai"].Value = 0m;
+                    grid.CurrentCell = grid.Rows[rowIndex].Cells["SLNhap"];
+                    grid.Focus();
+                }
+                catch (Exception ex) { ShowError(ex); }
+            }
+        }
+
+        private static object DbText(string value) { return string.IsNullOrWhiteSpace(value) ? (object)DBNull.Value : value.Trim(); }
 
         private int SaveInvoiceTransaction(List<NhapHangLine> lines)
         {
@@ -237,6 +346,46 @@ VALUES (@MaNV, @MaNCC, @NgayNhap);", connection, transaction))
             public int SoLuong;
             public decimal DonGia;
             public decimal KhuyenMai;
+        }
+
+        private sealed class QuickEntryDialog : Form
+        {
+            private readonly TextBox name = new TextBox(); private readonly TextBox address = new TextBox(); private readonly TextBox phone = new TextBox();
+            public string Value1 { get { return name.Text.Trim(); } } public string Value2 { get { return address.Text.Trim(); } } public string Value3 { get { return phone.Text.Trim(); } }
+            public QuickEntryDialog(string title, string nameLabel, string addressLabel, string phoneLabel)
+            {
+                Text = title; Width = 420; Height = 240; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 2, RowCount = 4 };
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                AddField(layout, nameLabel, name, 0); AddField(layout, addressLabel, address, 1); AddField(layout, phoneLabel, phone, 2);
+                var actions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
+                var save = new Button { Text = "Thêm", AutoSize = true };
+                var cancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, AutoSize = true };
+                save.Click += delegate { if (Value1.Length == 0) MessageBox.Show(this, "Vui lòng nhập " + nameLabel.ToLower() + ".", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning); else { DialogResult = DialogResult.OK; Close(); } };
+                actions.Controls.Add(save); actions.Controls.Add(cancel); layout.Controls.Add(actions, 1, 3); Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
+            }
+            private static void AddField(TableLayoutPanel layout, string label, Control input, int row)
+            { layout.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); layout.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, row); input.Dock = DockStyle.Fill; layout.Controls.Add(input, 1, row); }
+        }
+
+        private sealed class QuickBookDialog : Form
+        {
+            private readonly TextBox titleBox = new TextBox(); private readonly ComboBox category = new ComboBox();
+            public string BookTitle { get { return titleBox.Text.Trim(); } } public int CategoryId { get { return Convert.ToInt32(category.SelectedValue); } }
+            public QuickBookDialog(DataTable categories)
+            {
+                Text = "Thêm sách mới"; Width = 440; Height = 190; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 2, RowCount = 3 };
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 40)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 35)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+                layout.Controls.Add(new Label { Text = "Tên sách *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0); titleBox.Dock = DockStyle.Fill; layout.Controls.Add(titleBox, 1, 0);
+                layout.Controls.Add(new Label { Text = "Loại sách *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
+                category.DataSource = categories; category.ValueMember = "MaLoai"; category.DisplayMember = "TenLoai"; category.DropDownStyle = ComboBoxStyle.DropDownList; category.Dock = DockStyle.Fill; layout.Controls.Add(category, 1, 1);
+                var actions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
+                var save = new Button { Text = "Thêm", AutoSize = true }; var cancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, AutoSize = true };
+                save.Click += delegate { if (BookTitle.Length == 0) MessageBox.Show(this, "Vui lòng nhập tên sách.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning); else { DialogResult = DialogResult.OK; Close(); } };
+                actions.Controls.Add(save); actions.Controls.Add(cancel); layout.Controls.Add(actions, 1, 2); Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
+            }
         }
     }
 }

@@ -17,6 +17,9 @@ namespace QuanLyCuaHangSach
         private System.Windows.Forms.Label lblTongTien;
         private System.Windows.Forms.Button btnLuu;
         private System.Windows.Forms.Button btnLamMoi;
+        private System.Windows.Forms.Button btnThemNCC;
+        private System.Windows.Forms.Button btnThemSach;
+        private System.Windows.Forms.Button btnLichSu;
 
         protected override void Dispose(bool disposing)
         {
@@ -36,6 +39,7 @@ namespace QuanLyCuaHangSach
             this.cboNhanVien = new System.Windows.Forms.ComboBox();
             this.lblNhaCungCap = new System.Windows.Forms.Label();
             this.cboNhaCungCap = new System.Windows.Forms.ComboBox();
+            this.btnThemNCC = new System.Windows.Forms.Button();
             this.lblNgayNhap = new System.Windows.Forms.Label();
             this.dtpNgayNhap = new System.Windows.Forms.DateTimePicker();
             this.grid = new System.Windows.Forms.DataGridView();
@@ -48,6 +52,8 @@ namespace QuanLyCuaHangSach
             this.lblTongTien = new System.Windows.Forms.Label();
             this.btnLuu = new System.Windows.Forms.Button();
             this.btnLamMoi = new System.Windows.Forms.Button();
+            this.btnThemSach = new System.Windows.Forms.Button();
+            this.btnLichSu = new System.Windows.Forms.Button();
             this.layoutRoot.SuspendLayout();
             this.layoutHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
@@ -88,15 +94,17 @@ namespace QuanLyCuaHangSach
             // 
             // layoutHeader
             // 
-            this.layoutHeader.ColumnCount = 4;
+            this.layoutHeader.ColumnCount = 5;
             this.layoutHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.layoutHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.layoutHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 110F));
             this.layoutHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.layoutHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 42F));
             this.layoutHeader.Controls.Add(this.lblNhanVien, 0, 0);
             this.layoutHeader.Controls.Add(this.cboNhanVien, 1, 0);
             this.layoutHeader.Controls.Add(this.lblNhaCungCap, 2, 0);
             this.layoutHeader.Controls.Add(this.cboNhaCungCap, 3, 0);
+            this.layoutHeader.Controls.Add(this.btnThemNCC, 4, 0);
             this.layoutHeader.Controls.Add(this.lblNgayNhap, 0, 1);
             this.layoutHeader.Controls.Add(this.dtpNgayNhap, 1, 1);
             this.layoutHeader.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -146,6 +154,16 @@ namespace QuanLyCuaHangSach
             this.cboNhaCungCap.Name = "cboNhaCungCap";
             this.cboNhaCungCap.Size = new System.Drawing.Size(432, 28);
             this.cboNhaCungCap.TabIndex = 3;
+            //
+            // btnThemNCC
+            //
+            this.btnThemNCC.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnThemNCC.Location = new System.Drawing.Point(1083, 7);
+            this.btnThemNCC.Name = "btnThemNCC";
+            this.btnThemNCC.Size = new System.Drawing.Size(1, 27);
+            this.btnThemNCC.TabIndex = 6;
+            this.btnThemNCC.Text = "+";
+            this.btnThemNCC.UseVisualStyleBackColor = true;
             // 
             // lblNgayNhap
             // 
@@ -234,6 +252,8 @@ namespace QuanLyCuaHangSach
             this.layoutFooter.Controls.Add(this.lblTongTien);
             this.layoutFooter.Controls.Add(this.btnLuu);
             this.layoutFooter.Controls.Add(this.btnLamMoi);
+            this.layoutFooter.Controls.Add(this.btnThemSach);
+            this.layoutFooter.Controls.Add(this.btnLichSu);
             this.layoutFooter.Dock = System.Windows.Forms.DockStyle.Fill;
             this.layoutFooter.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
             this.layoutFooter.Location = new System.Drawing.Point(17, 637);
@@ -270,6 +290,18 @@ namespace QuanLyCuaHangSach
             this.btnLamMoi.Size = new System.Drawing.Size(77, 38);
             this.btnLamMoi.TabIndex = 2;
             this.btnLamMoi.Text = "Làm mới";
+            this.btnThemSach.AutoSize = true;
+            this.btnThemSach.Location = new System.Drawing.Point(560, 3);
+            this.btnThemSach.Name = "btnThemSach";
+            this.btnThemSach.Size = new System.Drawing.Size(110, 38);
+            this.btnThemSach.TabIndex = 3;
+            this.btnThemSach.Text = "+ Sách mới";
+            this.btnLichSu.AutoSize = true;
+            this.btnLichSu.Location = new System.Drawing.Point(430, 3);
+            this.btnLichSu.Name = "btnLichSu";
+            this.btnLichSu.Size = new System.Drawing.Size(124, 38);
+            this.btnLichSu.TabIndex = 4;
+            this.btnLichSu.Text = "Lịch sử nhập";
             // 
             // frmNhapHang
             // 
