@@ -13,6 +13,7 @@ namespace QuanLyCuaHangSach
         private System.Windows.Forms.FlowLayoutPanel actions;
         private System.Windows.Forms.Button btnTaiLai;
         private System.Windows.Forms.Button btnXoaChiTiet;
+        private System.Windows.Forms.Button btnXuatExcel;
         protected override void Dispose(bool disposing)
         { if (disposing && components != null) components.Dispose(); base.Dispose(disposing); }
         private void InitializeComponent()
@@ -28,6 +29,7 @@ namespace QuanLyCuaHangSach
             this.actions = new System.Windows.Forms.FlowLayoutPanel();
             this.btnTaiLai = new System.Windows.Forms.Button();
             this.btnXoaChiTiet = new System.Windows.Forms.Button();
+            this.btnXuatExcel = new System.Windows.Forms.Button();
             this.layoutRoot.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitHistory)).BeginInit();
             this.splitHistory.Panel1.SuspendLayout(); this.splitHistory.Panel2.SuspendLayout(); this.splitHistory.SuspendLayout();
@@ -65,10 +67,11 @@ namespace QuanLyCuaHangSach
             this.gridChiTiet.BackgroundColor = System.Drawing.Color.White; this.gridChiTiet.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gridChiTiet.MultiSelect = false; this.gridChiTiet.Name = "gridChiTiet"; this.gridChiTiet.ReadOnly = true;
             this.gridChiTiet.RowHeadersVisible = false; this.gridChiTiet.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.actions.Controls.Add(this.btnTaiLai); this.actions.Controls.Add(this.btnXoaChiTiet);
+            this.actions.Controls.Add(this.btnTaiLai); this.actions.Controls.Add(this.btnXoaChiTiet); this.actions.Controls.Add(this.btnXuatExcel);
             this.actions.Dock = System.Windows.Forms.DockStyle.Fill; this.actions.Name = "actions";
             this.btnTaiLai.AutoSize = true; this.btnTaiLai.Name = "btnTaiLai"; this.btnTaiLai.Text = "Tải lại";
             this.btnXoaChiTiet.AutoSize = true; this.btnXoaChiTiet.Name = "btnXoaChiTiet"; this.btnXoaChiTiet.Text = "Xóa chi tiết đang chọn";
+            this.btnXuatExcel.AutoSize = true; this.btnXuatExcel.Name = "btnXuatExcel"; this.btnXuatExcel.Text = "Xuất Excel";
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F); this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1200, 740); this.Controls.Add(this.layoutRoot); this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.Name = "frmLichSuBanHang"; this.Text = "Lịch sử bán hàng";
