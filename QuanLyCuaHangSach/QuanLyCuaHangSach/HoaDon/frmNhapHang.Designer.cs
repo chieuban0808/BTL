@@ -133,13 +133,13 @@ namespace QuanLyCuaHangSach
             this.cboNhanVien.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cboNhanVien.Location = new System.Drawing.Point(103, 7);
             this.cboNhanVien.Name = "cboNhanVien";
-            this.cboNhanVien.Size = new System.Drawing.Size(432, 28);
+            this.cboNhanVien.Size = new System.Drawing.Size(411, 28);
             this.cboNhanVien.TabIndex = 1;
             // 
             // lblNhaCungCap
             // 
             this.lblNhaCungCap.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblNhaCungCap.Location = new System.Drawing.Point(541, 4);
+            this.lblNhaCungCap.Location = new System.Drawing.Point(520, 4);
             this.lblNhaCungCap.Name = "lblNhaCungCap";
             this.lblNhaCungCap.Size = new System.Drawing.Size(104, 33);
             this.lblNhaCungCap.TabIndex = 2;
@@ -150,17 +150,17 @@ namespace QuanLyCuaHangSach
             // 
             this.cboNhaCungCap.Dock = System.Windows.Forms.DockStyle.Fill;
             this.cboNhaCungCap.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboNhaCungCap.Location = new System.Drawing.Point(651, 7);
+            this.cboNhaCungCap.Location = new System.Drawing.Point(630, 7);
             this.cboNhaCungCap.Name = "cboNhaCungCap";
-            this.cboNhaCungCap.Size = new System.Drawing.Size(432, 28);
+            this.cboNhaCungCap.Size = new System.Drawing.Size(411, 28);
             this.cboNhaCungCap.TabIndex = 3;
-            //
+            // 
             // btnThemNCC
-            //
+            // 
             this.btnThemNCC.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnThemNCC.Location = new System.Drawing.Point(1083, 7);
+            this.btnThemNCC.Location = new System.Drawing.Point(1047, 7);
             this.btnThemNCC.Name = "btnThemNCC";
-            this.btnThemNCC.Size = new System.Drawing.Size(1, 27);
+            this.btnThemNCC.Size = new System.Drawing.Size(36, 27);
             this.btnThemNCC.TabIndex = 6;
             this.btnThemNCC.Text = "+";
             this.btnThemNCC.UseVisualStyleBackColor = true;
@@ -290,14 +290,20 @@ namespace QuanLyCuaHangSach
             this.btnLamMoi.Size = new System.Drawing.Size(77, 38);
             this.btnLamMoi.TabIndex = 2;
             this.btnLamMoi.Text = "Làm mới";
+            // 
+            // btnThemSach
+            // 
             this.btnThemSach.AutoSize = true;
-            this.btnThemSach.Location = new System.Drawing.Point(560, 3);
+            this.btnThemSach.Location = new System.Drawing.Point(558, 3);
             this.btnThemSach.Name = "btnThemSach";
             this.btnThemSach.Size = new System.Drawing.Size(110, 38);
             this.btnThemSach.TabIndex = 3;
             this.btnThemSach.Text = "+ Sách mới";
+            // 
+            // btnLichSu
+            // 
             this.btnLichSu.AutoSize = true;
-            this.btnLichSu.Location = new System.Drawing.Point(430, 3);
+            this.btnLichSu.Location = new System.Drawing.Point(428, 3);
             this.btnLichSu.Name = "btnLichSu";
             this.btnLichSu.Size = new System.Drawing.Size(124, 38);
             this.btnLichSu.TabIndex = 4;

@@ -94,7 +94,7 @@ FROM Sach s LEFT JOIN KhoSach k ON k.MaSach = s.MaSach ORDER BY s.TenSach");
     s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach
 FROM Sach s LEFT JOIN KhoSach k ON k.MaSach=s.MaSach
 JOIN ChiTietHDN c ON c.MaSach=s.MaSach JOIN HoaDonNhap h ON h.SoHDN=c.SoHDN
-WHERE h.MaNCC=@MaNCC ORDER BY s.TenSach", new SqlParameter("@MaNCC", SqlDbType.Int) { Value = supplierId });
+WHERE h.MaNCC=@MaNCC ORDER BY TenSach", new SqlParameter("@MaNCC", SqlDbType.Int) { Value = supplierId });
                     if (fromSupplier.Rows.Count > 0)
                     {
                         suggested = fromSupplier;
@@ -337,7 +337,7 @@ VALUES (@MaNV, @MaNCC, @NgayNhap);", connection, transaction))
 
         private void ShowError(Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Không thể lưu hóa đơn", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, "Lỗi nhập hàng", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private sealed class NhapHangLine
@@ -354,18 +354,19 @@ VALUES (@MaNV, @MaNCC, @NgayNhap);", connection, transaction))
             public string Value1 { get { return name.Text.Trim(); } } public string Value2 { get { return address.Text.Trim(); } } public string Value3 { get { return phone.Text.Trim(); } }
             public QuickEntryDialog(string title, string nameLabel, string addressLabel, string phoneLabel)
             {
-                Text = title; Width = 420; Height = 240; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
-                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 2, RowCount = 4 };
+                Text = title; Width = 460; Height = 300; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false; AutoScaleMode = AutoScaleMode.Font;
+                var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 2, RowCount = 4 };
                 layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
                 AddField(layout, nameLabel, name, 0); AddField(layout, addressLabel, address, 1); AddField(layout, phoneLabel, phone, 2);
-                var actions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
-                var save = new Button { Text = "Thêm", AutoSize = true };
-                var cancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, AutoSize = true };
+                var actions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 6, 0, 0) };
+                var save = new Button { Text = "Thêm", DialogResult = DialogResult.None, Size = new System.Drawing.Size(90, 34), Margin = new Padding(6, 0, 0, 0) };
+                var cancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, Size = new System.Drawing.Size(90, 34), Margin = new Padding(6, 0, 0, 0) };
                 save.Click += delegate { if (Value1.Length == 0) MessageBox.Show(this, "Vui lòng nhập " + nameLabel.ToLower() + ".", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning); else { DialogResult = DialogResult.OK; Close(); } };
                 actions.Controls.Add(save); actions.Controls.Add(cancel); layout.Controls.Add(actions, 1, 3); Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
             }
             private static void AddField(TableLayoutPanel layout, string label, Control input, int row)
-            { layout.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); layout.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, row); input.Dock = DockStyle.Fill; layout.Controls.Add(input, 1, row); }
+            { layout.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(3, 0, 8, 0) }, 0, row); input.Dock = DockStyle.Fill; input.Margin = new Padding(3, 7, 3, 7); layout.Controls.Add(input, 1, row); }
         }
 
         private sealed class QuickBookDialog : Form
@@ -374,15 +375,15 @@ VALUES (@MaNV, @MaNCC, @NgayNhap);", connection, transaction))
             public string BookTitle { get { return titleBox.Text.Trim(); } } public int CategoryId { get { return Convert.ToInt32(category.SelectedValue); } }
             public QuickBookDialog(DataTable categories)
             {
-                Text = "Thêm sách mới"; Width = 440; Height = 190; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
+                Text = "Thêm sách mới"; Width = 460; Height = 250; StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false; AutoScaleMode = AutoScaleMode.Font;
                 var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 2, RowCount = 3 };
                 layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 40)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 35)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
                 layout.Controls.Add(new Label { Text = "Tên sách *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 0); titleBox.Dock = DockStyle.Fill; layout.Controls.Add(titleBox, 1, 0);
                 layout.Controls.Add(new Label { Text = "Loại sách *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
                 category.DataSource = categories; category.ValueMember = "MaLoai"; category.DisplayMember = "TenLoai"; category.DropDownStyle = ComboBoxStyle.DropDownList; category.Dock = DockStyle.Fill; layout.Controls.Add(category, 1, 1);
-                var actions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
-                var save = new Button { Text = "Thêm", AutoSize = true }; var cancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, AutoSize = true };
+                var actions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 6, 0, 0) };
+                var save = new Button { Text = "Thêm", Size = new System.Drawing.Size(90, 34), Margin = new Padding(6, 0, 0, 0) }; var cancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, Size = new System.Drawing.Size(90, 34), Margin = new Padding(6, 0, 0, 0) };
                 save.Click += delegate { if (BookTitle.Length == 0) MessageBox.Show(this, "Vui lòng nhập tên sách.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning); else { DialogResult = DialogResult.OK; Close(); } };
                 actions.Controls.Add(save); actions.Controls.Add(cancel); layout.Controls.Add(actions, 1, 2); Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
             }
