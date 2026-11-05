@@ -1,5 +1,11 @@
 .vs/
-bin/
-obj/
-*.user
 *.suo
+*.user
+*.userosscache
+*.sln.docstates
+[Bb]in/
+[Oo]bj/
+packages/
+*.nupkg
+*.log
+TestResults/
