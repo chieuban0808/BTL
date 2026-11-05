@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace QuanLyCuaHangSach
 {
-    public sealed partial class frmSach : Form
+    public partial class frmSach : Form
     {
         private int? selectedId;
 
