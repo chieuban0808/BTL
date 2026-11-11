@@ -85,29 +85,9 @@ namespace QuanLyCuaHangSach
                 DataTable allBooks = DB.GetTable(@"SELECT s.MaSach,
     s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach
 FROM Sach s LEFT JOIN KhoSach k ON k.MaSach = s.MaSach ORDER BY s.TenSach");
+                // Nhập hàng cần cho phép chọn mọi sách, kể cả sách chưa từng
+                // được nhập từ nhà cung cấp đang chọn.
                 DataTable suggested = allBooks;
-                int supplierId;
-                if (cboNhaCungCap.SelectedValue != null && cboNhaCungCap.SelectedValue != DBNull.Value &&
-                    Int32.TryParse(Convert.ToString(cboNhaCungCap.SelectedValue), out supplierId))
-                {
-                    DataTable fromSupplier = DB.GetTable(@"SELECT DISTINCT s.MaSach,
-    s.TenSach + N' (tồn: ' + CONVERT(NVARCHAR(20), ISNULL(k.SoLuong, 0)) + N')' AS TenSach
-FROM Sach s LEFT JOIN KhoSach k ON k.MaSach=s.MaSach
-JOIN ChiTietHDN c ON c.MaSach=s.MaSach JOIN HoaDonNhap h ON h.SoHDN=c.SoHDN
-WHERE h.MaNCC=@MaNCC ORDER BY TenSach", new SqlParameter("@MaNCC", SqlDbType.Int) { Value = supplierId });
-                    if (fromSupplier.Rows.Count > 0)
-                    {
-                        suggested = fromSupplier;
-                        var included = new HashSet<int>();
-                        foreach (DataRow row in suggested.Rows) included.Add(Convert.ToInt32(row["MaSach"]));
-                        foreach (DataGridViewRow row in grid.Rows)
-                        {
-                            if (row.IsNewRow || row.Cells["MaSach"].Value == null || row.Cells["MaSach"].Value == DBNull.Value) continue;
-                            int currentId = Convert.ToInt32(row.Cells["MaSach"].Value);
-                            if (included.Add(currentId)) ImportBook(allBooks, suggested, currentId);
-                        }
-                    }
-                }
                 if (additionalBookId.HasValue && !ContainsBook(suggested, additionalBookId.Value)) ImportBook(allBooks, suggested, additionalBookId.Value);
                 var bookColumn = (DataGridViewComboBoxColumn)grid.Columns["MaSach"];
                 bookColumn.DataSource = suggested;
