@@ -108,8 +108,7 @@ namespace QuanLyCuaHangSach
         {
             try
             {
-                string columns = string.Join(", ", fields.Select(f => "[" + f.Name + "]"));
-                grid.DataSource = DB.GetTable("SELECT [" + keyName + "], " + columns + " FROM [" + tableName + "] ORDER BY [" + keyName + "] DESC");
+                grid.DataSource = CatalogBUS.GetRows(tableName, keyName, fields.Select(f => f.Name));
                 if (grid.Columns.Contains(keyName)) grid.Columns[keyName].HeaderText = "Mã";
                 foreach (var field in fields)
                     if (grid.Columns.Contains(field.Name)) grid.Columns[field.Name].HeaderText = field.Caption;
@@ -163,18 +162,7 @@ namespace QuanLyCuaHangSach
                 for (int i = 0; i < fields.Length; i++)
                     parameters.Add(CreateParameter("@p" + i, fields[i], values[i]));
 
-                if (selectedId.HasValue)
-                {
-                    var assignments = fields.Select((f, i) => "[" + f.Name + "] = @p" + i);
-                    parameters.Add(new SqlParameter("@id", selectedId.Value));
-                    DB.Exec("UPDATE [" + tableName + "] SET " + string.Join(", ", assignments) + " WHERE [" + keyName + "] = @id", parameters.ToArray());
-                }
-                else
-                {
-                    string names = string.Join(", ", fields.Select(f => "[" + f.Name + "]"));
-                    string args = string.Join(", ", fields.Select((f, i) => "@p" + i));
-                    DB.Exec("INSERT INTO [" + tableName + "] (" + names + ") VALUES (" + args + ")", parameters.ToArray());
-                }
+                CatalogBUS.Save(tableName, keyName, fields.Select(f => f.Name), parameters, selectedId);
 
                 LoadRows();
                 ClearEditors();
@@ -202,7 +190,7 @@ namespace QuanLyCuaHangSach
             if (MessageBox.Show(this, "Xóa bản ghi đang chọn?", Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
             try
             {
-                DB.Exec("DELETE FROM [" + tableName + "] WHERE [" + keyName + "] = @id", new SqlParameter("@id", selectedId.Value));
+                CatalogBUS.Delete(tableName, keyName, selectedId.Value);
                 LoadRows();
                 ClearEditors();
             }

@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BUS\BusinessServices.cs" />
     <Compile Include="Classes\DB.cs" />
     <Compile Include="Classes\AppSession.cs" />
     <Compile Include="Classes\ExcelReportExporter.cs" />

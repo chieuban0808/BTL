@@ -30,17 +30,16 @@ namespace QuanLyCuaHangSach
         {
             try
             {
-                BindOptional(cboLoai, "SELECT MaLoai AS Id, TenLoai AS Ten FROM LoaiSach ORDER BY TenLoai");
-                BindOptional(cboNXB, "SELECT MaNXB AS Id, TenNXB AS Ten FROM NXB ORDER BY TenNXB");
+                BindOptional(cboLoai, SearchBUS.GetBookTypes());
+                BindOptional(cboNXB, SearchBUS.GetPublishers());
                 SearchBooks();
                 SearchPurchases();
             }
             catch (Exception ex) { ShowError(ex); }
         }
 
-        private static void BindOptional(ComboBox combo, string sql)
+        private static void BindOptional(ComboBox combo, DataTable data)
         {
-            var data = DB.GetTable(sql);
             var all = data.NewRow();
             all["Id"] = DBNull.Value;
             all["Ten"] = "(Tất cả)";
@@ -55,12 +54,7 @@ namespace QuanLyCuaHangSach
         {
             try
             {
-                gridSach.DataSource = DB.GetTableSP("sp_TimSach",
-                    new SqlParameter("@TenSach", SqlDbType.NVarChar, 200) { Value = string.IsNullOrWhiteSpace(txtTenSach.Text) ? (object)DBNull.Value : txtTenSach.Text.Trim() },
-                    new SqlParameter("@MaLoai", SqlDbType.Int) { Value = ComboValue(cboLoai) },
-                    new SqlParameter("@MaNXB", SqlDbType.Int) { Value = ComboValue(cboNXB) },
-                    new SqlParameter("@MaLinhVuc", SqlDbType.Int) { Value = DBNull.Value },
-                    new SqlParameter("@MaNgonNgu", SqlDbType.Int) { Value = DBNull.Value });
+                gridSach.DataSource = SearchBUS.SearchBooks(txtTenSach.Text, ComboValue(cboLoai), ComboValue(cboNXB));
                 SetHeader(gridSach, "MaSach", "Mã sách");
                 SetHeader(gridSach, "TenSach", "Tên sách");
                 SetHeader(gridSach, "TenLoai", "Loại sách");
@@ -100,10 +94,9 @@ namespace QuanLyCuaHangSach
                 if (dtpTuNgay.Checked && dtpDenNgay.Checked && dtpTuNgay.Value.Date > dtpDenNgay.Value.Date)
                     throw new InvalidOperationException("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
 
-                gridNhap.DataSource = DB.GetTableSP("sp_TimHoaDonNhap",
-                    new SqlParameter("@MaSach", SqlDbType.Int) { Value = bookId },
-                    new SqlParameter("@TuNgay", SqlDbType.Date) { Value = dtpTuNgay.Checked ? (object)dtpTuNgay.Value.Date : DBNull.Value },
-                    new SqlParameter("@DenNgay", SqlDbType.Date) { Value = dtpDenNgay.Checked ? (object)dtpDenNgay.Value.Date : DBNull.Value });
+                gridNhap.DataSource = SearchBUS.SearchPurchases(bookId,
+                    dtpTuNgay.Checked ? (object)dtpTuNgay.Value.Date : null,
+                    dtpDenNgay.Checked ? (object)dtpDenNgay.Value.Date : null);
                 SetHeader(gridNhap, "SoHDN", "Số hóa đơn nhập");
                 SetHeader(gridNhap, "NgayNhap", "Ngày nhập");
                 SetHeader(gridNhap, "TenNCC", "Nhà cung cấp");

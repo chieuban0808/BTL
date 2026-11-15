@@ -28,10 +28,7 @@ namespace QuanLyCuaHangSach
                 if (username.Length == 0 || txtMatKhau.Text.Length == 0)
                     throw new InvalidOperationException("Nhập tên đăng nhập và mật khẩu.");
 
-                var rowset = DB.GetTable(@"SELECT nv.MaNV, nv.TenNV, nv.MatKhau, cv.TenCV
-FROM NhanVien nv JOIN CongViec cv ON cv.MaCV=nv.MaCV
-WHERE nv.TenDangNhap=@TenDangNhap",
-                    new SqlParameter("@TenDangNhap", SqlDbType.VarChar, 50) { Value = username });
+                var rowset = AuthenticationBUS.FindEmployee(username);
                 if (rowset.Rows.Count == 0 || !VerifyPassword(txtMatKhau.Text, Convert.ToString(rowset.Rows[0]["MatKhau"])))
                     throw new InvalidOperationException("Tên đăng nhập hoặc mật khẩu không đúng.");
 

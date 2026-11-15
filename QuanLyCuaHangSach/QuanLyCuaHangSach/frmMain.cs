@@ -181,13 +181,10 @@ namespace QuanLyCuaHangSach
             if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime) return;
             try
             {
-                var sales = DB.GetTable(@"SELECT ISNULL(SUM(TongTien), 0) AS DoanhThu, COUNT(*) AS SoHoaDon
-FROM HoaDonBan WHERE NgayBan=CONVERT(date, GETDATE())");
-                lblRevenueValue.Text = Convert.ToDecimal(sales.Rows[0]["DoanhThu"]).ToString("N0") + " đ";
-                lblInvoiceValue.Text = Convert.ToString(sales.Rows[0]["SoHoaDon"]);
-                var lowStock = DB.GetTable(@"SELECT s.MaSach, s.TenSach, k.SoLuong
-FROM KhoSach k JOIN Sach s ON s.MaSach=k.MaSach
-WHERE k.SoLuong <= 5 ORDER BY k.SoLuong, s.TenSach");
+                var summary = DashboardBUS.GetTodaySummary();
+                lblRevenueValue.Text = summary.Revenue.ToString("N0") + " đ";
+                lblInvoiceValue.Text = summary.InvoiceCount.ToString();
+                var lowStock = summary.LowStockBooks;
                 lblLowStockValue.Text = lowStock.Rows.Count.ToString();
                 gridLowStock.DataSource = lowStock;
                 SetGridHeader("MaSach", "Mã sách");

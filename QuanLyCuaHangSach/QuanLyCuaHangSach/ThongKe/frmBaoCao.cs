@@ -39,7 +39,7 @@ namespace QuanLyCuaHangSach
         {
             try
             {
-                grid.DataSource = DB.GetTableSP(procedure, parameters);
+                grid.DataSource = ReportBUS.GetProcedureReport(procedure, parameters);
                 FormatReportGrid(grid);
             }
             catch (Exception ex)
@@ -52,15 +52,7 @@ namespace QuanLyCuaHangSach
         {
             try
             {
-                var data = new DataSet();
-                using (var connection = new SqlConnection(DB.ConnStr))
-                using (var adapter = new SqlDataAdapter("sp_HoaDonBanTheoQuy", connection))
-                {
-                    adapter.SelectCommand.CommandType = CommandType.StoredProcedure;
-                    adapter.SelectCommand.Parameters.Add("@Quy", SqlDbType.Int).Value = (int)nudQuyBan.Value;
-                    adapter.SelectCommand.Parameters.Add("@Nam", SqlDbType.Int).Value = (int)nudNamBan.Value;
-                    adapter.Fill(data);
-                }
+                var data = ReportBUS.GetSalesByQuarter((int)nudQuyBan.Value, (int)nudNamBan.Value);
 
                 gridBanQuy.DataSource = data.Tables.Count > 0 ? data.Tables[0] : null;
                 FormatReportGrid(gridBanQuy);
